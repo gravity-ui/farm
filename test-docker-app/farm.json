@@ -1,0 +1,8 @@
+{
+  "preview-generator": {
+    "dockerfilePath": "./test-app.Dockerfile",
+    "dockerInstanceHealthcheck": {
+      "path": "/"
+    }
+  }
+}
