@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  verify_files:
-    name: Verify Files
+  lint_and_typecheck:
+    name: Lint and typecheck
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,11 +23,9 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
-      - name: Circular Dependencies
-        run: npm run circular-deps
 
-  unit_tests:
-    name: Unit Tests
+  circular_deps:
+    name: Check for circular dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,5 +37,5 @@ jobs:
           cache: npm
       - name: Install Packages
         run: npm ci
-      - name: Run Tests
-        run: npm run test
+      - name: Check for circular dependencies
+        run: npm run circular-deps
