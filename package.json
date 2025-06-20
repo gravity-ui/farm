@@ -1,0 +1,40 @@
+{
+  "name": "@gravity-ui/farm",
+  "version": "0.0.1",
+  "description": "PR preview generator",
+  "homepage": "https://gravity-ui.com",
+  "bugs": {
+    "url": "https://github.com/gravity-ui/farm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gravity-ui/farm.git"
+  },
+  "license": "MIT",
+  "main": "src/server/index.js",
+  "scripts": {
+    "lint": "echo 'not implemented yet' && exit 0",
+    "prepare": "husky",
+    "test": "echo 'not implemented yet' && exit 0",
+    "typecheck": "echo 'not implemented yet' && exit 0",
+    "circular-deps": "echo 'not implemented yet' && exit 0"
+  },
+  "nano-staged": {
+    "*.{css,scss}": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix --quiet",
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7",
+    "nano-staged": "^0.8.0",
+    "prettier": "^3.2.5",
+    "stylelint": "^15.10.3"
+  }
+}
