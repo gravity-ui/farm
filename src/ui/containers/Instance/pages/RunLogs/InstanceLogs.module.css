@@ -1,0 +1,20 @@
+.instanceLogs {
+    height: calc(100vh - 125px);
+    padding: var(--g-spacing-5);
+    overflow-y: auto;
+}
+
+.body {
+    height: 100%;
+    justify-content: space-evenly;
+    position: relative;
+}
+
+.logcard {
+    height: 50%;
+    padding: var(--g-spacing-5);
+}
+
+.logcard:not(:last-of-type) {
+    margin-bottom: var(--g-spacing-5);
+}

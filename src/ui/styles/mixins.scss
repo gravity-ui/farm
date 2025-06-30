@@ -1,0 +1,55 @@
+@import '~@gravity-ui/uikit/styles/mixins';
+
+@mixin line-clamp($count: 1) {
+    display: box;
+    -webkit-line-clamp: $count;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@mixin monospace() {
+    font-family: monospace;
+}
+
+@mixin overflow-ellipsis($type: ellipsis) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: $type;
+}
+
+@mixin button-reset() {
+    margin: 0;
+    padding: 0;
+
+    font-size: inherit;
+    font-weight: 400;
+
+    color: inherit;
+    background: none;
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+
+@mixin naked-link {
+    text-decoration: none;
+    color: var(--yc-color-text-primary);
+
+    &:hover {
+        color: var(--yc-color-scarlet-solid);
+    }
+}
+
+@mixin link {
+    text-decoration: none;
+    color: var(--g-color-text-link);
+    border-radius: var(--g-focus-border-radius);
+
+    &:hover {
+        color: var(--g-color-text-link-hover);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--g-color-line-focus);
+    }
+}

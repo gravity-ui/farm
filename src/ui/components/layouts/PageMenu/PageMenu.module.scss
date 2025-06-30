@@ -1,0 +1,70 @@
+.headerWrapper {
+    position: relative;
+    padding-right: 45px;
+}
+
+.headerIcon {
+    position: absolute;
+    right: 0;
+    top: 10px;
+    transform: translateY(-50%);
+}
+
+.headerTitle {
+    overflow-wrap: break-word;
+}
+
+.cardIconSkeleton {
+    width: 100px;
+    height: 20px;
+}
+
+.items {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+
+.itemsHidden {
+    display: none;
+}
+
+.itemLink {
+    display: flex;
+    align-items: center;
+    padding: 10px var(--g-spacing-5) 8px;
+    text-decoration: none;
+    color: var(--g-color-text-primary);
+
+    &:hover {
+        background-color: var(--g-color-base-simple-hover);
+        color: var(--g-color-text-primary);
+    }
+}
+
+.itemLinkActive,
+.itemLinkActive:hover {
+    background-color: var(--g-color-base-selection);
+    color: var(--g-color-text-primary);
+}
+
+.itemLinkPointer {
+    cursor: pointer;
+}
+
+.itemIcon {
+    margin-right: var(--g-spacing-2);
+    color: var(--g-color-text-misc);
+}
+
+.itemIcon > svg {
+    display: block;
+}
+
+.itemTitle {
+    display: inline;
+
+    &:not(:last-child) {
+        margin-inline-end: var(--g-spacing-2);
+    }
+}

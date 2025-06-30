@@ -1,0 +1,4 @@
+{
+  "title": "Логи сборки",
+  "command-finished": "Команда завершена за {{duration}}с"
+}

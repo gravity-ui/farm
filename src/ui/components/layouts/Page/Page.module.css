@@ -1,0 +1,5 @@
+.page {
+    min-height: 100%;
+    padding: var(--g-spacing-5);
+    width: 100%;
+}

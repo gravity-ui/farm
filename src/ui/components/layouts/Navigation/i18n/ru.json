@@ -1,0 +1,17 @@
+{
+  "title": "Оформление",
+  "customization-title": "Внешний вид",
+  "theme": "Тема интерфейса",
+  "light": "Светлая",
+  "dark": "Тёмная",
+  "language": "Язык",
+  "russian": "Русский",
+  "english": "Английский",
+  "help": "Помощь",
+  "documentation": "Документация",
+  "changelog": "Changelog",
+  "queue": "Очередь",
+  "new-instance": "Новый инстанс",
+  "settings": "Настройки",
+  "version": "Версия {{version}}"
+}

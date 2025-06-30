@@ -1,0 +1,15 @@
+{
+  "queued": "Queued",
+  "generating": "Generating",
+  "generated": "Generated",
+  "deleting": "Deleting",
+  "errored": "Errored",
+  "errored-provider": "Errored",
+  "starting": "Starting",
+  "running": "Running",
+  "stopped": "Stopped",
+  "unknown": "Unknown",
+  "unknown-hint": "Try to restart the instance or build it again",
+  "unhealthy": "Unhealthy",
+  "unhealthy-hint": "If a lot of time has passed, then the application may not have started or an error may have occurred"
+}

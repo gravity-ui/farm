@@ -1,0 +1,31 @@
+.actions {
+    height: 52px; /* fix to avoid content overlay on last row */
+}
+
+.actionsPanel {
+    position: fixed;
+    bottom: 0;
+    left: var(--gn-aside-header-size);
+    right: 0;
+    z-index: var(--z-index-actions-panel);
+    border-radius: 0;
+
+    /* hack to change color of button */
+    :global(.g-button_view_flat-contrast) {
+        --_--text-color: var(--g-color-text-brand-contrast);
+    }
+}
+
+.note {
+    color: var(--g-color-text-brand-contrast);
+}
+
+.listCard {
+    background-color: var(--g-color-base-generic-ultralight);
+    overflow: hidden;
+}
+
+.listItem {
+    padding-block: calc(var(--g-spacing-base) * 1);
+    padding-inline: calc(var(--g-spacing-base) * 2);
+}

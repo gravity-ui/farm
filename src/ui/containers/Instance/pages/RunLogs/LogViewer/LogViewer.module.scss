@@ -1,0 +1,54 @@
+.logViewer {
+    height: 100%;
+    position: relative;
+}
+
+.logs {
+    overflow: scroll;
+    margin-bottom: 5px;
+    max-height: calc(100% - 50px);
+
+    :global(.g-list__item),
+    :global(.g-list__item-content) {
+        overflow: initial;
+        user-select: initial;
+    }
+}
+
+.header {
+    font-size: 16px;
+}
+
+.label {
+    display: inline-flex;
+    margin-right: 8px;
+}
+
+.control {
+    margin-right: 8px;
+
+    &:global(.textinput__control) {
+        padding: 5px;
+    }
+
+    &:global(.g-text-input) {
+        width: 200px;
+    }
+}
+
+.fields {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    font-size: 16px;
+    height: 24px;
+    line-height: 24px;
+    padding: 2px 0;
+    margin: 6px 0;
+}
+
+.logItem {
+    display: inline-block;
+    pointer-events: all;
+    user-select: initial;
+}

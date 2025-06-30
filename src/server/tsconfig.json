@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig",
+  "include": ["**/*", "../typings/*", "../shared/*"],
+  "compilerOptions": {
+    "checkJs": false,
+    "esModuleInterop": true,
+    "outDir": "../../dist",
+  }
+}

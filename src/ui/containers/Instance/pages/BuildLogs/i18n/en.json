@@ -1,0 +1,4 @@
+{
+  "title": "Build logs",
+  "command-finished": "Command finished in {{duration}}s"
+}

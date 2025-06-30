@@ -1,0 +1,58 @@
+@import '~@gravity-ui/uikit/styles/styles.css';
+@import '~@gravity-ui/illustrations/styles/styles.scss';
+@import './themes';
+@import './yfm';
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    box-sizing: border-box;
+
+    font-size: 14px;
+    line-height: 1.385; // ~ 20px
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    margin: 0;
+    font-weight: var(--g-text-header-font-weight);
+}
+
+h1 {
+    font-size: 24px;
+    line-height: 24px;
+}
+
+h2 {
+    font-size: 20px;
+    line-height: 20px;
+}
+
+h3 {
+    font-size: 16px;
+    line-height: 16px;
+}
+
+ul,
+li {
+    margin: 0;
+}
+
+b,
+strong {
+    font-weight: var(--g-text-accent-font-weight);
+}
