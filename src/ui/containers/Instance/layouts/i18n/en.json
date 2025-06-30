@@ -1,0 +1,8 @@
+{
+  "not-found": "Instance not found",
+  "error": "An error occurred, check the logs",
+  "title": "Instance",
+  "overview": "Overview",
+  "build-logs": "Build logs",
+  "instance-logs": "Instance logs"
+}

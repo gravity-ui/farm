@@ -1,0 +1,22 @@
+.envCells {
+    --df-long-value-max-width: 300px;
+}
+
+.labelCell {
+    max-width: max-content;
+    width: max-content;
+    padding: 12px;
+}
+
+.skeleton {
+    height: 18px;
+}
+
+.skeletonCount {
+    height: 22px;
+    width: 20px;
+}
+
+.controlsSearch {
+    width: 360px;
+}

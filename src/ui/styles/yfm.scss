@@ -1,0 +1,50 @@
+@import '~@diplodoc/transform/dist/css/yfm.css';
+@import './mixins';
+
+.yfm {
+    --yfm-color-hljs-background: var(--g-color-base-generic);
+    --yfm-color-hljs-pseudo: #bc6060;
+    --yfm-color-hljs-literal: #78a960;
+    --yfm-color-hljs-addition: var(--g-color-text-positive);
+    --yfm-color-hljs-meta: #1f7199;
+    --yfm-color-hljs-meta-string: #4d99bf;
+
+    color: var(--g-color-text-primary);
+    font-family: var(--g-text-body-font-family);
+    @include text-body-1;
+
+    a {
+        @include link;
+    }
+
+    b,
+    strong {
+        @include text-accent;
+    }
+
+    hr {
+        background-color: var(--g-color-base-background);
+    }
+
+    blockquote {
+        border-left-color: var(--g-color-base-brand);
+    }
+
+    code {
+        background: var(--g-color-base-misc-light);
+        color: var(--g-color-text-misc);
+    }
+
+    .yfm-note {
+        background-color: var(--g-color-base-float);
+        border-color: var(--g-color-line-generic);
+    }
+
+    .yfm-tab.active {
+        border-bottom-color: var(--g-color-base-brand);
+    }
+
+    a.yfm-anchor {
+        display: none;
+    }
+}

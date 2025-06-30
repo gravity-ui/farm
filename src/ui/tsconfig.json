@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig",
+  "include": ["**/*", "../typings/*", "../shared/*"],
+  "compilerOptions": {
+    "outDir": "dist/public/build",
+    "resolveJsonModule": true,
+    "module": "esnext",
+    "jsx": "react",
+    "plugins": [{"name": "typescript-plugin-css-modules"}]
+  }
+}

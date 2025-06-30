@@ -1,0 +1,12 @@
+.reactQueryDevtools {
+    --chatButtonSize: 54px;
+    --chatButtonOffset: 16px;
+
+    width: var(--chatButtonSize);
+    display: flex;
+    justify-content: center;
+    position: fixed;
+    bottom: var(--chatButtonOffset);
+    right: var(--chatButtonOffset);
+    z-index: var(--z-index-devtools);
+}

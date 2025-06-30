@@ -1,0 +1,17 @@
+{
+  "delete": {
+    "one": "Deleting {{count}} instance",
+    "few": "Deleting {{count}} instances",
+    "many": "Deleting {{count}} instances"
+  },
+  "selected": {
+    "one": "Selected {{count}} instance",
+    "few": "Selected {{count}} instances",
+    "many": "Selected {{count}} instances"
+  },
+  "delete-confirm": {
+    "one": "Are you sure you want to delete the selected instance?",
+    "few": "Are you sure you want to delete the selected instances?",
+    "many": "Are you sure you want to delete the selected instances?"
+  }
+}

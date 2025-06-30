@@ -1,0 +1,27 @@
+.mainNavigation {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 50;
+    flex-shrink: 0;
+    width: 256px;
+
+    background-color: var(--g-color-base-generic-ultralight);
+    border-right: 1px solid var(--g-color-line-generic);
+
+    transition: width 0.2s ease;
+}
+
+.sticky {
+    position: sticky;
+    top: 0;
+
+    display: flex;
+    flex-direction: column;
+    min-height: var(--app-height);
+    overflow: hidden;
+
+    .page & {
+        top: var(--header-height);
+    }
+}

@@ -1,0 +1,8 @@
+.actionBarSkeleton {
+    width: 100%;
+    height: 40px;
+}
+
+.content > div {
+    min-width: 0;
+}

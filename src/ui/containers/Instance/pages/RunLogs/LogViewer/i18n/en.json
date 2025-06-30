@@ -1,0 +1,6 @@
+{
+  "logs-from": "Logs from «{{name}}»",
+  "filter": "Filter",
+  "filter-placeholder": "Text or JS /RegExp/gi",
+  "number-of-lines": "Number of lines"
+}

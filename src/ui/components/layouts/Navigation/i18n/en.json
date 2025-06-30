@@ -1,0 +1,17 @@
+{
+  "title": "Customization",
+  "customization-title": "Appearance",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "language": "Language",
+  "russian": "Russian",
+  "english": "English",
+  "help": "Help",
+  "documentation": "Documentation",
+  "changelog": "Changelog",
+  "queue": "Queue",
+  "new-instance": "New Instance",
+  "settings": "Settings",
+  "version": "Version {{version}}"
+}

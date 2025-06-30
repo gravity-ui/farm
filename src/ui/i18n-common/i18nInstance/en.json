@@ -1,0 +1,16 @@
+{
+  "title": "Overview",
+  "hash": "Hash",
+  "project": "Project",
+  "branch": "Branch",
+  "url": "URL",
+  "last-changes": "Last changes",
+  "description": "Description",
+  "labels": "Labels",
+  "env-variables": "Environment variables",
+  "run-env-variables": "Runtime environment variables",
+  "status": "Status",
+  "queue-position": "Queue position",
+  "not-found": "Instance not found",
+  "go-to-instance": "Go to instance"
+}

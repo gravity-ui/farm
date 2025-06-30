@@ -1,0 +1,33 @@
+.nav {
+    z-index: 99;
+}
+
+.link {
+    width: 100%;
+    height: calc(100% - 4px);
+    display: flex;
+}
+
+.helpItem {
+    padding: var(--g-spacing-2);
+}
+
+.version {
+    padding: var(--g-spacing-2);
+    border-top: 1px solid var(--g-color-line-generic);
+}
+
+.avatar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: 40px;
+    justify-content: center;
+    width: var(--gn-aside-header-min-width);
+}
+
+.login {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}

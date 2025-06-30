@@ -1,0 +1,16 @@
+{
+  "title": "Обзор",
+  "hash": "Хеш",
+  "project": "Проект",
+  "branch": "Ветка",
+  "url": "URL",
+  "last-changes": "Последние изменения",
+  "description": "Описание",
+  "labels": "Метки",
+  "env-variables": "Переменные окружения",
+  "run-env-variables": "Переменные окружения рантайма",
+  "status": "Статус",
+  "queue-position": "Номер в очереди",
+  "not-found": "Инстанс не найден",
+  "go-to-instance": "Перейти к инстансу"
+}

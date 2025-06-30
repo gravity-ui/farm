@@ -1,0 +1,10 @@
+{
+  "project-name": "Project name",
+  "branch": "Branch or commit",
+  "description": "Description",
+  "url-template": "URL template",
+  "instance-config": "Instance config",
+  "variables": "Environment variables",
+  "run-variables": "Runtime environment variables",
+  "labels": "Labels"
+}

@@ -1,0 +1,36 @@
+.divider {
+    height: 1px;
+    background-color: var(--g-color-line-generic);
+    margin: var(--g-spacing-2) 0;
+}
+
+.list {
+    display: grid;
+    grid-gap: 20px;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.card {
+    transition: color 0.1s ease-out;
+}
+
+.instanceCount {
+    margin-top: auto;
+}
+
+.favoriteButton {
+    transition: all 0.2s ease;
+    color: var(--g-color-text-secondary);
+
+    &:hover {
+        color: var(--g-color-text-primary);
+    }
+}
+
+.favorite {
+    color: var(--g-color-text-warning);
+
+    &:hover {
+        color: var(--g-color-text-warning-heavy);
+    }
+}

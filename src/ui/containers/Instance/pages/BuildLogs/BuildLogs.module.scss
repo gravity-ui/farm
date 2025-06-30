@@ -1,0 +1,21 @@
+.buildLogs {
+    overflow: auto;
+    padding: var(--g-spacing-5);
+}
+
+.instanceLink {
+    color: var(--g-color-text-link);
+    text-decoration: none;
+
+    &:hover {
+        color: var(--g-color-text-link-hover);
+    }
+}
+
+.command {
+    white-space: pre-line;
+}
+
+.output {
+    margin: 0;
+}

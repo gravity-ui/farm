@@ -1,0 +1,10 @@
+{
+  "project-name": "Название проекта",
+  "branch": "Ветка или коммит",
+  "description": "Описание",
+  "url-template": "Шаблон URL",
+  "instance-config": "Конфиг инстанса",
+  "variables": "Переменные окружения",
+  "run-variables": "Переменные окружения рантайма",
+  "labels": "Метки"
+}

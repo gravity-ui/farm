@@ -1,0 +1,8 @@
+.instanceOverview {
+    overflow-x: hidden;
+}
+
+.label {
+    overflow-x: auto;
+    max-width: 600px; /* should be equal to `contentMaxWidth` in `DefinitionList` props */
+}

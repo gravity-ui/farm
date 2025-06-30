@@ -1,0 +1,7 @@
+{
+  "instance": {
+    "one": "Instance",
+    "few": "Instances",
+    "many": "Instances"
+  }
+}
