@@ -11,7 +11,6 @@ lib-cov
 
 npm-debug.log
 
-.pm2/
 .idea/
 .env
 .vscode
