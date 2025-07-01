@@ -23,6 +23,7 @@
     "db:migrate:up": "npm run build && knex migrate:up",
     "deps": "ADBLOCK=true npm i --no-save --no-audit --prefer-offline",
     "dev": "NODE_OPTIONS=\"--max-old-space-size=8192 \" APP_DEV_MODE=1 app-builder dev",
+    "build": "app-builder build",
     "lint": "npm-run-all --parallel lint:*",
     "lint:js": "eslint src/ --quiet",
     "lint:prettier": "prettier --check '{src,tests}/**/*.{js,jsx,ts,tsx,css,scss}'",

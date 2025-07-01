@@ -17,25 +17,16 @@ npm-debug.log
 .vscode
 
 node_modules
-dev/
 .swc
 
 nginx/nginx-api.conf
 nginx/nginx-preview.conf
 
-src/server/public/build/
 dist/server
 dist/shared
-dist/ui/
-dist/tvm
+dist/ui
 dist/public/build
-src/server/configs/env/dev.ts
-nginx-dev/*
-!nginx-dev/dev-api.template.conf
-!nginx-dev/dev-preview.template.conf
 
-nginx-templates/*
-!nginx-templates/docker-proxy.template.conf
-!nginx-templates/farm.template.conf
+src/server/configs/env/dev.ts
 
 test-*-app/farm-config.js*
