@@ -39,11 +39,11 @@ export class BaseFarmProvider {
         throw new Error('Called not implemented method');
     }
 
-    startInstance(_instance: Instance): Promise<void> {
+    stopBuilder(_hash: string): Promise<void> {
         throw new Error('Called not implemented method');
     }
 
-    stopBuilder(_hash: string): Promise<void> {
+    startInstance(_instance: Instance): Promise<void> {
         throw new Error('Called not implemented method');
     }
 
