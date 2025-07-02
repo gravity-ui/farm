@@ -10,13 +10,14 @@ import type {
 } from '../../../../shared/common';
 import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../../models/common';
 import {CommandError} from '../../../utils/command-error';
-import {generateInstanceHref, sleep} from '../../../utils/common';
+import {generateInstanceHref} from '../../../utils/common';
 import {
     type FarmJsonConfig,
     fetchProjectConfig,
     getInstanceConfig,
 } from '../../../utils/farmJsonConfig';
 import {getVcs} from '../../../utils/vcs';
+import {waitFor} from '../../../utils/wait-for';
 import {wrapAsCommand} from '../../../utils/wrap-as-command';
 import type {FarmInternalApi, LogParams} from '../base-provider';
 import {BaseFarmProvider} from '../base-provider';
@@ -44,6 +45,8 @@ const INSTANCE_CONTAINER_NAME = 'application';
 const FARM_LABELS = {
     'app.kubernetes.io/managed-by': 'Farm',
 };
+
+const DEPLOYMENT_CREATION_TIMEOUT = 30 * 1000;
 
 const containerStatusMap: Record<K8sContainerStatus, InstanceProviderStatus> = {
     // Custom container statuses
@@ -148,10 +151,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
         return Promise.resolve();
     }
 
-    async stopBuilder(hash: string): Promise<void> {
-        await this.deleteBuilderContainer(hash);
-    }
-
     async buildInstance(
         generateData: GenerateInstanceData,
         observer: SubscriptionObserver<InstanceObservableEmitValue>,
@@ -186,7 +185,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                     instanceImage,
                 );
 
-                await this.waitContainerFor(
+                await this.waitForContainerStatus(
                     builderInfo,
                     K8sContainerStatus.Ready,
                     startBuilderTimeout,
@@ -200,7 +199,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                     });
                 });
 
-                const builderStatus = await this.waitContainerFor(
+                const builderStatus = await this.waitForContainerStatus(
                     builderInfo,
                     [K8sContainerStatus.Completed, K8sContainerStatus.Error],
                     buildTimeout,
@@ -223,7 +222,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                     instanceConfig,
                     instanceImage,
                 );
-                await this.waitContainerFor(
+                await this.waitForContainerStatus(
                     instanceInfo,
                     K8sContainerStatus.Ready,
                     startInstanceTimeout,
@@ -239,6 +238,10 @@ export class K8sFarmProvider extends BaseFarmProvider {
 
             throw error;
         }
+    }
+
+    async stopBuilder(hash: string): Promise<void> {
+        await this.deleteBuilderContainer(hash);
     }
 
     async startInstance(instance: Instance): Promise<void> {
@@ -263,7 +266,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             instanceConfig,
             instanceImage,
         );
-        await this.waitContainerFor(
+        await this.waitForContainerStatus(
             instanceInfo,
             K8sContainerStatus.Ready,
             this.config.startInstanceTimeout,
@@ -580,7 +583,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             },
         });
 
-        const pods = await this.readDeploymentPods(deployment);
+        const pods = await this.waitForDeploymentPods(deployment, DEPLOYMENT_CREATION_TIMEOUT);
 
         if (pods.length === 0) {
             throw new Error(`No pods found for instance "${hash}"`);
@@ -647,6 +650,25 @@ export class K8sFarmProvider extends BaseFarmProvider {
         return this.listPods(labels);
     }
 
+    protected async waitForDeploymentPods(
+        deployment: k8s.V1Deployment,
+        timeout?: number,
+        period = 1000,
+    ): Promise<k8s.V1Pod[]> {
+        const {value: currentPods, timedOut} = await waitFor(
+            () => this.readDeploymentPods(deployment),
+            (pods) => pods.length > 0,
+            timeout,
+            period,
+        );
+
+        if (timedOut) {
+            throw new Error(`Deployment "${deployment.metadata?.name}" creation is timed out`);
+        }
+
+        return currentPods;
+    }
+
     protected async listPods(labels: K8sLabels): Promise<k8s.V1Pod[]> {
         const {body: pods} = await this.k8sApi.listNamespacedPod(
             this.config.namespace,
@@ -680,38 +702,27 @@ export class K8sFarmProvider extends BaseFarmProvider {
         return getContainerStatus(pod, containerName);
     }
 
-    protected waitContainerFor(
+    protected async waitForContainerStatus(
         containerInfo: K8sContainerInfo,
         statuses: K8sContainerStatus | K8sContainerStatus[],
         timeout?: number,
         period = 1000,
-    ): Promise<K8sContainerStatus | void> {
+    ): Promise<K8sContainerStatus> {
         const statusesSet = new Set(typeof statuses === 'string' ? [statuses] : statuses);
 
-        const waitFor = async () => {
-            let currentStatus = await this.readContainerStatus(containerInfo);
+        const {value: currentStatus, timedOut} = await waitFor(
+            () => this.readContainerStatus(containerInfo),
+            (status) => statusesSet.has(status),
+            timeout,
+            period,
+        );
 
-            while (!statusesSet.has(currentStatus)) {
-                currentStatus = await this.readContainerStatus(containerInfo);
-                await sleep(period);
-            }
-
-            return currentStatus;
-        };
-
-        if (!timeout) {
-            return waitFor();
+        if (timedOut) {
+            throw new Error(
+                `Container "${containerInfo.podName}/${containerInfo.containerName}" is timed out, current status: ${currentStatus}, expected statuses: [${statuses}]`,
+            );
         }
 
-        return Promise.race([
-            waitFor(),
-            sleep(timeout).then(async () => {
-                const currentStatus = await this.readContainerStatus(containerInfo);
-
-                throw new Error(
-                    `Container "${containerInfo.podName}/${containerInfo.containerName}" is timeouted, current status: ${currentStatus}, expected statuses: [${statuses}]`,
-                );
-            }),
-        ]);
+        return currentStatus;
     }
 }
