@@ -291,8 +291,9 @@ export class K8sFarmProvider extends BaseFarmProvider {
     async getInstanceStatus(instance: Instance): Promise<InstanceProviderStatus> {
         const [pod] = await this.listPods({hash: instance.hash});
 
+        // If pod is not found, it means that instance is stopped
         if (!pod) {
-            return 'unknown';
+            return 'stopped';
         }
 
         return mapToFarmStatus(getContainerStatus(pod, INSTANCE_CONTAINER_NAME));
