@@ -215,6 +215,7 @@ export const getDefineConfig = ({uiFiles, serverFiles, ignores}) =>
                 'no-console': 'warn',
                 '@typescript-eslint/member-ordering': 0,
                 complexity: 0,
+                'local-rules/no-core-public-api-import': 'error',
             },
         },
         {
