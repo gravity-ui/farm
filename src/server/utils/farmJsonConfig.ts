@@ -30,26 +30,22 @@ export interface FarmJsonConfig {
 
     // docker & k8s
     dockerfilePath?: string;
+    buildTimeout?: number;
+    startInstanceTimeout?: number;
 
     // docker
     dockerfileContextPath?: string;
     dockerInstanceHealthcheck?: DockerInstanceHealthcheck;
 
     // k8s
-    builderImage?: string;
-    builderEnvSecretName?: string;
-    instanceEnvSecretName?: string;
-    instancePort?: number;
-    instanceProbe?: k8s.V1Probe;
-    startBuilderTimeout?: number;
-    startInstanceTimeout?: number;
-    buildTimeout?: number;
-
-    // Deprecated
-    /** @deprecated */
-    smokeTestsBuildId?: string;
-    /** @deprecated */
-    e2eTestsBuildId?: string;
+    k8sBuilderImage?: string;
+    k8sBuilderEnvSecretName?: string;
+    k8sInstanceEnvSecretName?: string;
+    k8sInstancePort?: number;
+    k8sInstanceProbe?: k8s.V1Probe;
+    k8sStartBuilderTimeout?: number;
+    k8sBuilderResources?: k8s.V1ResourceRequirements;
+    k8sInstanceResources?: k8s.V1ResourceRequirements;
 }
 
 export interface FarmProjectConfigSection extends Omit<FarmJsonConfig, 'name'> {

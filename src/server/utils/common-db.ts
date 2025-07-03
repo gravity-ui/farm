@@ -7,20 +7,13 @@ import {insertInstanceLogs} from './db';
 // Общие функции из которых осуществляются взаимодействие с базой.
 // Было унесено из common.ts т.к. вызывало ошибку при использовании общего файла из тредов.
 
-interface GetInstanceDescriptionData extends InstanceInfo {
-    smokeTestsBuildId?: string;
-    e2eTestsBuildId?: string;
-}
-
-export function getInstanceDescription(info: GetInstanceDescriptionData): InstanceDescription {
+export function getInstanceDescription(info: InstanceInfo): InstanceDescription {
     const {
         project,
         branch,
         vcs,
         instanceConfigName,
         urlTemplate,
-        smokeTestsBuildId,
-        e2eTestsBuildId,
         envVariables = {},
         runEnvVariables = {},
     } = info;
@@ -45,8 +38,6 @@ export function getInstanceDescription(info: GetInstanceDescriptionData): Instan
         instanceUrl: generateInstanceHref({project, hash, urlTemplate}),
         instanceConfigName,
         urlTemplate,
-        smokeTestsBuildId,
-        e2eTestsBuildId,
 
         project,
         insertInstanceLogs: async (logs: Output[]) => {

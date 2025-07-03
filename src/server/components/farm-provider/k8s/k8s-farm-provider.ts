@@ -136,6 +136,8 @@ export class K8sFarmProvider extends BaseFarmProvider {
             startBuilderTimeout: config.startBuilderTimeout ?? 60 * 1000,
             startInstanceTimeout: config.startInstanceTimeout ?? 5 * 60 * 1000,
             buildTimeout: config.buildTimeout ?? 20 * 60 * 1000,
+            builderResources: config.builderResources ?? null,
+            instanceResources: config.instanceResources ?? null,
         };
 
         const kubeConfig = new k8s.KubeConfig();
@@ -170,9 +172,9 @@ export class K8sFarmProvider extends BaseFarmProvider {
             }
 
             const {
-                startBuilderTimeout = this.config.startBuilderTimeout,
-                startInstanceTimeout = this.config.startInstanceTimeout,
                 buildTimeout = this.config.buildTimeout,
+                startInstanceTimeout = this.config.startInstanceTimeout,
+                k8sStartBuilderTimeout: startBuilderTimeout = this.config.startBuilderTimeout,
             } = instanceConfig;
 
             const instanceImage = this.getInstanceImage(project, hash);
@@ -349,8 +351,9 @@ export class K8sFarmProvider extends BaseFarmProvider {
         const {
             env,
             dockerfilePath = this.config.dockerfilePath,
-            builderImage = this.config.builderImage,
-            builderEnvSecretName = this.config.builderEnvSecretName,
+            k8sBuilderImage: builderImage = this.config.builderImage,
+            k8sBuilderEnvSecretName: builderEnvSecretName = this.config.builderEnvSecretName,
+            k8sBuilderResources: builderResources = this.config.builderResources,
         } = instanceConfig;
 
         const buildEnvVariables = {
@@ -401,6 +404,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                         env: buildK8sEnvVariables(buildEnvVariables),
                         command: ['/bin/sh', '-c'],
                         args: [commands.join('\n')],
+                        resources: builderResources ?? undefined,
                     },
                 ],
                 volumes: [
@@ -443,9 +447,10 @@ export class K8sFarmProvider extends BaseFarmProvider {
             urlTemplate: configUrlTemplate,
             env,
             runEnv,
-            instanceEnvSecretName = this.config.instanceEnvSecretName,
-            instancePort = this.config.instancePort,
-            instanceProbe = this.config.instanceProbe,
+            k8sInstanceEnvSecretName: instanceEnvSecretName = this.config.instanceEnvSecretName,
+            k8sInstancePort: instancePort = this.config.instancePort,
+            k8sInstanceProbe: instanceProbe = this.config.instanceProbe,
+            k8sInstanceResources: instanceResources = this.config.instanceResources,
         } = instanceConfig;
 
         const {deploymentName, serviceName, ingressName} = getInstanceResourceNames(hash);
@@ -476,7 +481,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
         ).host;
 
         // TODO(golbahsg, k8s): Add securityContext
-        // TODO(golbahsg, k8s): Add resources
         const {body: deployment} = await this.k8sApps.createNamespacedDeployment(namespace, {
             apiVersion: 'apps/v1',
             kind: 'Deployment',
@@ -515,6 +519,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                                 ],
                                 livenessProbe: instanceProbe,
                                 readinessProbe: instanceProbe,
+                                resources: instanceResources ?? undefined,
                             },
                         ],
                     },
