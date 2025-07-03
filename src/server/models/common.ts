@@ -41,8 +41,6 @@ export interface InstanceDescription {
     instanceConfigName: string;
     urlTemplate?: string;
 
-    smokeTestsBuildId?: string;
-    e2eTestsBuildId?: string;
     project: string;
     insertInstanceLogs: (logs: Output[]) => Promise<void>;
 }

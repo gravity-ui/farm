@@ -37,4 +37,6 @@ export interface FarmK8sProviderConfig {
     startBuilderTimeout?: number;
     startInstanceTimeout?: number;
     buildTimeout?: number;
+    builderResources?: k8s.V1ResourceRequirements | null;
+    instanceResources?: k8s.V1ResourceRequirements | null;
 }
