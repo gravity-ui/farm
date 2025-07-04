@@ -36,4 +36,32 @@ module.exports = {
             };
         },
     },
+    'no-core-public-api-import': {
+        meta: {
+            type: 'problem',
+            docs: {
+                description: 'Disallow imports from public-api within the core project',
+                category: 'Best Practices',
+                recommended: true,
+            },
+            schema: [], // no options
+            messages: {
+                invalidImport:
+                    'Imports from public-api are not allowed within the core project. Use direct imports instead.',
+            },
+        },
+
+        create(context) {
+            return {
+                ImportDeclaration(node) {
+                    if (node.source.value.includes('/public-api')) {
+                        context.report({
+                            node,
+                            messageId: 'invalidImport',
+                        });
+                    }
+                },
+            };
+        },
+    },
 };
