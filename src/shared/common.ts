@@ -7,8 +7,8 @@ export type InstanceProviderStatus =
     | 'running'
     | 'stopped'
     | 'errored'
-    | 'unknown'
-    | 'unhealthy';
+    | 'unhealthy'
+    | 'unknown';
 
 export interface Instance {
     branch: string;
