@@ -1,4 +1,4 @@
-FROM ghcr.io/gravity-ui/farm:docker-provider-VERSION
+FROM ghcr.io/gravity-ui/farm:0.0.1-rc2025-07-10-13-16-docker-provider
 
 COPY ./nginx.conf /etc/nginx/
 COPY ./docker-proxy.conf /opt/nginx/
