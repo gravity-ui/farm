@@ -1,0 +1,16 @@
+{
+  "defaultProject": "docker-app",
+  "defaultBranch": "main",
+  "projects": {
+    "docker-app": {
+      "repositoryPath": "gravity-ui/farm",
+      "monoRepoPath": "test-docker-app",
+      "defaultBranch": "main",
+      "vcs": "git",
+      "dockerInstanceHealthcheck": {
+        "port": 80,
+        "path": "/"
+      }
+    }
+  }
+}
