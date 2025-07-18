@@ -50,6 +50,17 @@ farmHome="$HOME/farm"
 dockerProxyConfTarget=$farmHome/docker-proxy.conf
 docker run --rm --entrypoint cat $farmImageName /opt/nginx/docker-proxy.conf > $dockerProxyConfTarget
 
+## copied from docker entrypoint
+DOCKER_NETWORK=${DOCKER_NETWORK:="farm"}
+DOCKER_NETWORK_IPV6=${DOCKER_NETWORK_IPV6:="true"}
+if [[ $DOCKER_NETWORK_IPV6 == "true"  ]]; then
+DOCKER_NETWORK_SUBNET=${DOCKER_NETWORK_SUBNET:="ad00::/8"}
+DOCKER_NETWORK_FLAGS=${DOCKER_NETWORK_FLAGS:="--ipv6 --subnet=$DOCKER_NETWORK_SUBNET"}
+fi
+(docker network inspect $DOCKER_NETWORK &>/dev/null && echo "Network $DOCKER_NETWORK already created") || \
+(docker network create $DOCKER_NETWORK_FLAGS $DOCKER_NETWORK && echo "Network $DOCKER_NETWORK created")
+## <<<<
+
 docker rm --force farm || echo "No actual farm container"
 docker run \
 -d \
@@ -81,6 +92,8 @@ Parameters explanation:
 
 When using an ipv6 environment, you may have problems accessing the external Internet from a container. Here are recommendations that can help:
 
+> Ensure docker network `farm` is created with args ipv6 flags like in startup example or docker entrypoint script.
+
 **Find your DNS server ipv6 addresses:**
 
 ```bash
@@ -99,6 +112,7 @@ sudo vim /etc/docker/daemon.json
     "dns": [
         "xxxx:yyyy:n:dddd::jjjj"
     ],
+    "dns-opts": ["rotate", "timeout:1", "attempts:2"],
     "fixed-cidr": "",
     "fixed-cidr-v6": "fd00::/8"
 }
