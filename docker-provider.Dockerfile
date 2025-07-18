@@ -33,6 +33,8 @@ RUN <<EOT
     tee /etc/apt/sources.list.d/docker.list > /dev/null
     apt update
     apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    # docker entrypoint permissions
+    chmod +x /opt/app/scripts/docker/docker-entrypoint.sh
 EOT
 
 ENV NODE_ENV=production
