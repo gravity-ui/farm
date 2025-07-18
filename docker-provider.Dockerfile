@@ -22,7 +22,7 @@ RUN <<EOT
     mkdir /farm
     mkdir -p /opt/logs
     apt update
-    apt install -y python3 python-is-python3 git curl wget nano
+    apt install -y python3 python-is-python3 git curl wget nano net-tools iproute2 dnsutils iputils-ping
     # docker install
     install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc

@@ -1,12 +1,16 @@
 # Farm — Base environment with docker provider
 
-**Build own Farm image with project configurations:**
+- **Copy example files to your project**
+
+- **Build own Farm image with project configurations:**
+
+`build.sh`
 
 ```bash
-docker build base-environments/test-docker-provider-farm -f base-environments/test-docker-provider-farm/test-docker-farm.Dockerfile -t test-docker-farm:latest
+docker . -f farm.dockerfile -t docker-farm:latest
 ```
 
-**Prepare host-level Nginx for routing request to Farm:**
+- **Prepare host-level Nginx for routing request to Farm:**
 
 > Replace todo and actual Farm container port
 
@@ -16,7 +20,7 @@ server {
   ## include common/ssl;
 
   ## Combined server_name pattern for main domain and subdomains
-  server_name ~^(?<hash>.+\.)?demo-farm-host\.local$;
+  server_name ~^(?<hash>.+\.)?your-farm\.host$;
 
   location / {
     proxy_pass http://127.0.0.1:3000;
@@ -34,19 +38,20 @@ server {
 }
 ```
 
-**Run Farm image:**
+- **Run Farm image:**
 
 `startup.sh`
 
 ```bash
 farmImageName="your-farm-image"
+farmHome="$HOME/farm"
 ## When attach docker engine then need define DOCKER_PROXY_NGINX_CONF_SRC to docker-proxy.conf on host, cuz container entrypoint will start docker proxy from host-level.
 ## If your farm image has docker-proxy.conf inside, your may export it.
-dockerProxyConfTarget=/farm/docker-proxy.conf
+dockerProxyConfTarget=$farmHome/docker-proxy.conf
 docker run --rm --entrypoint cat $farmImageName /opt/nginx/docker-proxy.conf > $dockerProxyConfTarget
 
+docker rm --force farm || echo "No actual farm container"
 docker run \
---rm \
 -d \
 --ulimit nofile=65536:65536 \
 --privileged -it \
@@ -54,7 +59,7 @@ docker run \
 -e ATTACHED_DOCKER_ENGINE=true \
 -e DOCKER_PROXY_NGINX_CONF_SRC="$dockerProxyConfTarget" \
 --network=farm \
--v /farm:/farm \
+-v $farmHome:/farm \
 -e FARM_DB_FILE_PATH="/farm/farm.db" \
 -v /var/run/docker.sock:/var/run/docker.sock \
 -v ~/.docker/config.json:/root/.docker/config.json \
@@ -62,3 +67,63 @@ docker run \
 --name farm \
 $farmImageName
 ```
+
+Parameters explanation:
+
+- `--ulimit nofile=65536:65536` - Prepares container for docker-in-docker usage by setting file descriptor limits
+- `--privileged` - Grants extended privileges to the container
+- `-e ATTACHED_DOCKER_ENGINE=true` - Special mode for entrypoint configuration
+- `-e DOCKER_PROXY_NGINX_CONF_SRC="$dockerProxyConfTarget"` - Host path to nginx proxy configuration
+- `-v /var/run/docker.sock:/var/run/docker.sock` - Binds host Docker socket to container
+- `-v $HOME/.docker/config.json:/root/.docker/config.json` - Mounts Docker auth config for farm usage
+
+## IPv6 troubleshooting
+
+When using an ipv6 environment, you may have problems accessing the external Internet from a container. Here are recommendations that can help:
+
+**Find your DNS server ipv6 addresses:**
+
+```bash
+nslookup -type=NS google.com
+```
+
+**Copy value from Server to docker config:**
+
+```bash
+sudo vim /etc/docker/daemon.json
+
+{
+    "iptables": false,
+    "ip-forward": false,
+    "ipv6": true,
+    "dns": [
+        "xxxx:yyyy:n:dddd::jjjj"
+    ],
+    "fixed-cidr": "",
+    "fixed-cidr-v6": "fd00::/8"
+}
+```
+
+```bash
+service docker stop && ip link del docker0 && service docker start
+ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+sysctl -w net.ipv6.conf.all.forwarding=1
+```
+
+If Docker fails to start with the error:
+
+> Failed to start docker.socket: The name org.freedesktop.PolicyKit1 was not provided by any .service files
+
+You need to install the policykit-1 package:
+
+```bash
+sudo apt install policykit-1
+```
+
+**Install iptables-persistent package, during installation save only ipv6 rules:**
+
+```bash
+sudo ip6tables -t nat -A POSTROUTING \! -o docker0 -j MASQUERADE
+```
+
+> If the issue appears again, repeat the network configuration commands.

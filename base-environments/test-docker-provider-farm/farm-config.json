@@ -12,5 +12,11 @@
         "path": "/"
       }
     }
+  },
+  "farmProvider": {
+    "name": "docker",
+    "config": {
+      "network": "farm"
+    }
   }
 }
