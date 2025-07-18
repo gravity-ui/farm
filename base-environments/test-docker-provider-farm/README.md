@@ -55,7 +55,7 @@ DOCKER_NETWORK=${DOCKER_NETWORK:="farm"}
 DOCKER_NETWORK_IPV6=${DOCKER_NETWORK_IPV6:="true"}
 if [[ $DOCKER_NETWORK_IPV6 == "true"  ]]; then
 DOCKER_NETWORK_SUBNET=${DOCKER_NETWORK_SUBNET:="ad00::/8"}
-DOCKER_NETWORK_FLAGS=${DOCKER_NETWORK_FLAGS:="--ipv6 --subnet=$DOCKER_NETWORK_SUBNET"}
+DOCKER_NETWORK_FLAGS=${DOCKER_NETWORK_FLAGS:="--driver=bridge --ipv6 --subnet=$DOCKER_NETWORK_SUBNET"}
 fi
 (docker network inspect $DOCKER_NETWORK &>/dev/null && echo "Network $DOCKER_NETWORK already created") || \
 (docker network create $DOCKER_NETWORK_FLAGS $DOCKER_NETWORK && echo "Network $DOCKER_NETWORK created")
