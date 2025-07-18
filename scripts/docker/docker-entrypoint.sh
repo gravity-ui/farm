@@ -39,16 +39,20 @@ fi
 ## prepare docker network
 
 if [[ $DOCKER_NETWORK_IPV6 == "true" && $ATTACHED_DOCKER_ENGINE == "false"  ]]; then
+    if [[ -z "$DOCKER_NETWORK_IPV6_DNS_ADDRESS" ]]; then
+        echo "Error: DOCKER_NETWORK_IPV6_DNS_ADDRESS environment variable is not set" >&2
+        exit 1
+    fi
 
-cat << EOF > /etc/docker/daemon.json
+    cat << EOF > /etc/docker/daemon.json
 {
     "iptables": false,
     "ip-forward": false,
     "ipv6": true,
     "dns": [
-        "2a02:6b8:0:3400::1023",
-        "2a02:6b8:0:3400::5005"
+        "$DOCKER_NETWORK_IPV6_DNS_ADDRESS"
     ],
+    "dns-opts": ["rotate", "timeout:1", "attempts:2"],
     "fixed-cidr": "",
     "fixed-cidr-v6": "$DOCKER_FIXED_CIDR_V6"
 }
