@@ -2,7 +2,7 @@
   "defaultProject": "docker-app",
   "defaultBranch": "main",
   "maxConcurrentBuilds": 1,
-  "urlTemplate": "https: //{hash}.your-farm.host",
+  "urlTemplate": "https://{hash}.your-farm.host",
   "projects": {
     "docker-app": {
       "repositoryPath": "gravity-ui/farm",
