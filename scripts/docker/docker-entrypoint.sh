@@ -27,16 +27,15 @@ function checkAndStartDocker() {
 if [[ $FARM_DEPLOYMENT_MODE == "vm" ]]; then
 echo "Starting docker..."
 checkAndStartDocker
-fi
 
 if [[ -z "$DOCKER_LOGIN" || -z "$DOCKER_PWD" ]]; then
     echo "Warning: DOCKER_LOGIN or DOCKER_PWD not defined, skipping docker login"
 else
     echo $DOCKER_PWD | docker login --username $DOCKER_LOGIN --password-stdin $DOCKER_REGISTRY
-    if [[ $FARM_DEPLOYMENT_MODE == "vm" ]]; then
     ## on restart container docker service may down after starting by unknown reason, check and try again
     checkAndStartDocker
-    fi
+fi
+
 fi
 
 ## prepare docker network
