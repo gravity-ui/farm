@@ -1,5 +1,21 @@
 # Farm — Base environment with docker provider
 
+## Docker Container vs VM
+
+Docker Farm can be run in two ways.
+
+**Docker Container with attached docker engine**
+
+The docker container will run commands using an external docker socket, thereby managing the containers on the host.
+
+**VM with docker**
+
+A VM based on a farm image with an independent Docker inside.
+
+Use `FARM_DEPLOYMENT_MODE` to define mode: `vm` or `docker_container`.
+
+## Setup
+
 - **Pull base Farm image or build from repository**
 
 - **Copy example files to your project**

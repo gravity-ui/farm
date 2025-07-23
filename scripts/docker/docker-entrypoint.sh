@@ -2,7 +2,7 @@ set -euo pipefail
 
 ## Check & define vars
 
-ATTACHED_DOCKER_ENGINE=${ATTACHED_DOCKER_ENGINE:="false"}
+FARM_DEPLOYMENT_MODE=${FARM_DEPLOYMENT_MODE:="docker_container"}
 
 DOCKER_NETWORK=${DOCKER_NETWORK:="farm"}
 DOCKER_NETWORK_IPV6=${DOCKER_NETWORK_IPV6:="true"}
@@ -24,7 +24,7 @@ function checkAndStartDocker() {
     service docker status || service docker start && sleep $DOCKER_RUNNING_CHECK_INTERVAL
 }
 
-if [[ $ATTACHED_DOCKER_ENGINE == "false" ]]; then
+if [[ $FARM_DEPLOYMENT_MODE == "vm" ]]; then
 echo "Starting docker..."
 checkAndStartDocker
 if [[ -z "$DOCKER_LOGIN" || -z "$DOCKER_PWD" ]]; then
@@ -38,7 +38,7 @@ fi
 
 ## prepare docker network
 
-if [[ $DOCKER_NETWORK_IPV6 == "true" && $ATTACHED_DOCKER_ENGINE == "false"  ]]; then
+if [[ $DOCKER_NETWORK_IPV6 == "true" && $FARM_DEPLOYMENT_MODE == "vm"  ]]; then
     if [[ -z "$DOCKER_NETWORK_IPV6_DNS_ADDRESS" ]]; then
         echo "Error: DOCKER_NETWORK_IPV6_DNS_ADDRESS environment variable is not set" >&2
         exit 1
@@ -69,13 +69,6 @@ fi
 (docker network inspect $DOCKER_NETWORK &>/dev/null && echo "Network $DOCKER_NETWORK already created") || \
 (docker network create $DOCKER_NETWORK_FLAGS $DOCKER_NETWORK && echo "Network $DOCKER_NETWORK created")
 
-if [[ ! -e "/opt/nginx/docker-proxy.conf" ]]; then
-    echo "Config /opt/nginx/docker-proxy.conf not found"
-    exit 1;
-fi
-
-nginx -t -c /opt/nginx/docker-proxy.conf
-
 if [[ ! -e "/etc/nginx/nginx.conf" ]]; then
     echo "Define /etc/nginx/nginx.conf config with farm routes"
     exit 1;
@@ -83,13 +76,21 @@ fi
 
 nginx -t -c /etc/nginx/nginx.conf
 
-## Run docker proxy
-docker run --rm -d \
---name=$DOCKER_PROXY_CONTAINER \
--p 127.0.0.1:${DOCKER_PROXY_PORT}:80/tcp \
---network=$DOCKER_NETWORK \
--v $DOCKER_PROXY_NGINX_CONF_SRC:/etc/nginx/nginx.conf \
-nginx:${DOCKER_PROXY_NGINX_TAG} bash -c "/usr/sbin/nginx -g 'daemon off;'" || docker start $DOCKER_PROXY_CONTAINER
+if [[ $FARM_DEPLOYMENT_MODE == "vm" ]]; then
+    if [[ ! -e "/opt/nginx/docker-proxy.conf" ]]; then
+        echo "Config /opt/nginx/docker-proxy.conf not found"
+        exit 1;
+    fi
+
+    nginx -t -c /opt/nginx/docker-proxy.conf
+
+    docker run --rm -d \
+    --name=$DOCKER_PROXY_CONTAINER \
+    -p 127.0.0.1:${DOCKER_PROXY_PORT}:80/tcp \
+    --network=$DOCKER_NETWORK \
+    -v $DOCKER_PROXY_NGINX_CONF_SRC:/etc/nginx/nginx.conf \
+    nginx:${DOCKER_PROXY_NGINX_TAG} bash -c "/usr/sbin/nginx -g 'daemon off;'" || docker start $DOCKER_PROXY_CONTAINER
+fi
 
 ## Run Nginx
 service nginx start &
