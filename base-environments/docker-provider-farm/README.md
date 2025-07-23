@@ -25,6 +25,7 @@ Use `FARM_DEPLOYMENT_MODE` to define mode: `vm` or `docker_container`.
   - Prepare `host-nginx-farm.conf` — Host Nginx rules to container (farm docker container only).
   - Prepare `farm-nginx.conf` — Main Farm Nginx rules.
   - Prepare `docker-proxy.conf` (for VM only).
+  - Prepare `.env` file (farm docker container only).
 
 - **Build own project Farm image with configurations:**
 
