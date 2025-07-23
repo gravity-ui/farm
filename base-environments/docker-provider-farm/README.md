@@ -10,15 +10,21 @@ The docker container will run commands using an external docker socket, thereby 
 
 **VM with docker**
 
-A VM based on a farm image with an independent Docker inside.
+A VM based on a farm image with an independent Docker inside. Use with docker-proxy.
 
 Use `FARM_DEPLOYMENT_MODE` to define mode: `vm` or `docker_container`.
+
+> Docker proxy — container to proxy request to instance container by hash in address.
 
 ## Setup
 
 - **Pull base Farm image or build from repository**
 
 - **Copy example files to your project**
+  - Prepare `farm-config.json` — Main Farm configuration.
+  - Prepare `host-nginx-farm.conf` — Host Nginx rules to container (farm docker container only).
+  - Prepare `farm-nginx.conf` — Main Farm Nginx rules.
+  - Prepare `docker-proxy.conf` (for VM only).
 
 - **Build own project Farm image with configurations:**
 
