@@ -46,13 +46,21 @@ It is recommended to limit the number of parallel builds or to run only one buil
 Current limitations:
 
 - Partial BuildKit support (some features may not work)
-- File and directory mounting features are not supported (including secrets and similar functionality).
+- File and directory mounting features are not supported (including secrets and similar functionality)
 
 **k8s**
 
 With k8s, farm components, including instances and their build processes, run independently. This allows the farm to scale horizontally.
 
-
 # Getting Started
 
 We recommend starting by deploying one of the test farm configurations, and then configuring the farm for your own projects.
+
+- [Farm with Docker provider](../../base-environments/docker-provider-farm/README.md)
+
+# Configurations
+
+Configure the farm for your projects:
+
+- Farm configuration [`farm-config.json`](./farm-config-json.md)
+- Application build configuration in the Farm [`farm.json`](./farm-json.md)
