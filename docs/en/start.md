@@ -63,4 +63,7 @@ We recommend starting by deploying one of the test farm configurations, and then
 Configure the farm for your projects:
 
 - Farm configuration [`farm-config.json`](./farm-config-json.md)
+  - Provider configurations description
+    - [Docker](./farm-config-json-docker-provider.md)
+    - [K8s](./farm-config-json-k8s-provider.md)
 - Application build configuration in the Farm [`farm.json`](./farm-json.md)

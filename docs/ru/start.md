@@ -62,4 +62,9 @@ Self-hosted сервис для развертывания приложений 
 Настройте ферму под свои проекты:
 
 - Конфигурация фермы [`farm-config.json`](./farm-config-json.md)
+  - Описание конфигураций провайдеров
+    - [Docker](./farm-config-json-docker-provider.md)
+    - [K8s](./farm-config-json-k8s-provider.md)
 - Конфигурация сборки приложения в ферме [`farm.json`](./farm-json.md)
+
+Описание конфигураций провайдеров

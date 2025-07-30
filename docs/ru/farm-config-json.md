@@ -100,3 +100,5 @@
 - *Object*
 - *Required*
 > Конфигурация провайдера. Подробнее в документации провайдера.
+> - [Docker](./farm-config-json-docker-provider.md)
+> - [K8s](./farm-config-json-k8s-provider.md)

@@ -100,5 +100,7 @@ Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
 - *Object*
 - *Required*
 > Provider configuration. Read more in Provider documentation.
+> - [Docker](./farm-config-json-docker-provider.md)
+> - [K8s](./farm-config-json-k8s-provider.md)
 
 
