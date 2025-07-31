@@ -2,7 +2,7 @@
 
 ## Generating application instances in pull requests
 
-To generate an application instance in a pull request, you can set up a webhook using the example request below:
+To generate an application instance in a pull request, you can either set up a webhook in GitHub or send a similar request from your CI systems using the example below:
 
 ```bash
 curl -X POST "https://farm.domain/webhook" \
