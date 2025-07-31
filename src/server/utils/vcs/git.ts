@@ -85,7 +85,7 @@ export class GitVcs implements Vcs {
 
         const project = data.repository.full_name.split('/')[1];
         const title = data.pull_request.title;
-        const branch = `pull/${data.pull_request.number}`;
+        const branch = data.pull_request.head.ref;
         const description = data.pull_request.body || '';
         const baseBranch = data.pull_request.base.ref;
         const merged = data.pull_request.merged;
