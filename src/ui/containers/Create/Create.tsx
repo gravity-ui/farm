@@ -11,7 +11,7 @@ import type {
     GetInstanceConfigRequest,
     GetInstanceConfigResponse,
 } from '../../../shared/api/getInstanceConfig';
-import {ENV_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
+import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
 import {Page} from '../../components/layouts/Page/Page';
 import {ci18n} from '../../i18n-common/ci18n';
 import api from '../../services/api';
@@ -158,6 +158,9 @@ export const Create = () => {
             }
             if (key.startsWith(RUN_ENV_PREFIX)) {
                 values.runVariables.push({key: key.slice(RUN_ENV_PREFIX.length), value: val});
+            }
+            if (key.startsWith(LABEL_PREFIX)) {
+                values.labels.push({key: key.slice(LABEL_PREFIX.length), value: val});
             }
         }
 

@@ -2,7 +2,7 @@ import type {Request, Response} from '@gravity-ui/expresskit';
 import {z} from 'zod';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
-import {ENV_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
+import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 import {generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
 import * as instanceUtils from '../utils/instance';
@@ -41,6 +41,7 @@ const generate = async (req: Request, res: Response) => {
 
     const envVariables: Record<string, string> = {};
     const runEnvVariables: Record<string, string> = {};
+    const labelParams: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(restParameters)) {
         if (key.startsWith(ENV_PREFIX)) {
@@ -50,7 +51,13 @@ const generate = async (req: Request, res: Response) => {
         if (key.startsWith(RUN_ENV_PREFIX)) {
             runEnvVariables[key.slice(RUN_ENV_PREFIX.length)] = value as string;
         }
+
+        if (key.startsWith(LABEL_PREFIX)) {
+            labelParams[key.slice(LABEL_PREFIX.length)] = value as string;
+        }
     }
+
+    const mergedLabels = {...labels, ...labelParams};
 
     const configFile = await fetchProjectConfig({
         project,
@@ -83,7 +90,7 @@ const generate = async (req: Request, res: Response) => {
             urlTemplate: urlTemplate || instanceConfigNameConfig?.urlTemplate,
             vcs,
             instanceConfigName,
-            labels,
+            labels: mergedLabels,
         })
         .catch((e: Error) => {
             req.ctx.logError('GENERATE ERROR:', wrapInternalError(e));
