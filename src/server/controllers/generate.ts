@@ -2,7 +2,7 @@ import type {Request, Response} from '@gravity-ui/expresskit';
 import {z} from 'zod';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
-import {ENV_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
+import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 import {generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
 import * as instanceUtils from '../utils/instance';
@@ -41,16 +41,35 @@ const generate = async (req: Request, res: Response) => {
 
     const envVariables: Record<string, string> = {};
     const runEnvVariables: Record<string, string> = {};
+    const labelParams: Record<string, string> = {};
+
+    const trimmedLabels = labels
+        ? Object.fromEntries(
+              Object.entries(labels).map(([key, value]) => [key.trim(), value.trim()]),
+          )
+        : undefined;
 
     for (const [key, value] of Object.entries(restParameters)) {
         if (key.startsWith(ENV_PREFIX)) {
-            envVariables[key.slice(ENV_PREFIX.length)] = value as string;
+            const envKey = key.slice(ENV_PREFIX.length).trim();
+            const envValue = (value as string).trim();
+            envVariables[envKey] = envValue;
         }
 
         if (key.startsWith(RUN_ENV_PREFIX)) {
-            runEnvVariables[key.slice(RUN_ENV_PREFIX.length)] = value as string;
+            const runEnvKey = key.slice(RUN_ENV_PREFIX.length).trim();
+            const runEnvValue = (value as string).trim();
+            runEnvVariables[runEnvKey] = runEnvValue;
+        }
+
+        if (key.startsWith(LABEL_PREFIX)) {
+            const labelKey = key.slice(LABEL_PREFIX.length).trim();
+            const labelValue = (value as string).trim();
+            labelParams[labelKey] = labelValue;
         }
     }
+
+    const mergedLabels = {...trimmedLabels, ...labelParams};
 
     const configFile = await fetchProjectConfig({
         project,
@@ -83,7 +102,7 @@ const generate = async (req: Request, res: Response) => {
             urlTemplate: urlTemplate || instanceConfigNameConfig?.urlTemplate,
             vcs,
             instanceConfigName,
-            labels,
+            labels: mergedLabels,
         })
         .catch((e: Error) => {
             req.ctx.logError('GENERATE ERROR:', wrapInternalError(e));
