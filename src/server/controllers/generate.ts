@@ -43,21 +43,33 @@ const generate = async (req: Request, res: Response) => {
     const runEnvVariables: Record<string, string> = {};
     const labelParams: Record<string, string> = {};
 
+    const trimmedLabels = labels
+        ? Object.fromEntries(
+              Object.entries(labels).map(([key, value]) => [key.trim(), value.trim()]),
+          )
+        : undefined;
+
     for (const [key, value] of Object.entries(restParameters)) {
         if (key.startsWith(ENV_PREFIX)) {
-            envVariables[key.slice(ENV_PREFIX.length)] = value as string;
+            const envKey = key.slice(ENV_PREFIX.length).trim();
+            const envValue = (value as string).trim();
+            envVariables[envKey] = envValue;
         }
 
         if (key.startsWith(RUN_ENV_PREFIX)) {
-            runEnvVariables[key.slice(RUN_ENV_PREFIX.length)] = value as string;
+            const runEnvKey = key.slice(RUN_ENV_PREFIX.length).trim();
+            const runEnvValue = (value as string).trim();
+            runEnvVariables[runEnvKey] = runEnvValue;
         }
 
         if (key.startsWith(LABEL_PREFIX)) {
-            labelParams[key.slice(LABEL_PREFIX.length)] = value as string;
+            const labelKey = key.slice(LABEL_PREFIX.length).trim();
+            const labelValue = (value as string).trim();
+            labelParams[labelKey] = labelValue;
         }
     }
 
-    const mergedLabels = {...labels, ...labelParams};
+    const mergedLabels = {...trimmedLabels, ...labelParams};
 
     const configFile = await fetchProjectConfig({
         project,
