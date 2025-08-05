@@ -184,3 +184,11 @@ export function wrapInternalError(error: any) {
         details: error,
     });
 }
+
+export function filterEmptyObjectEntries<T extends Record<string, unknown>>(obj: T): T {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([key, value]) => {
+            return value !== undefined && value !== '' && key !== '' && value !== null;
+        }),
+    ) as T;
+}

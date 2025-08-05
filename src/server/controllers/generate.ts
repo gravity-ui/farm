@@ -3,7 +3,7 @@ import {z} from 'zod';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
-import {generateInstanceHash, wrapInternalError} from '../utils/common';
+import {filterEmptyObjectEntries, generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
 import * as instanceUtils from '../utils/instance';
 import type {Stats} from '../utils/stats';
@@ -81,13 +81,17 @@ const generate = async (req: Request, res: Response) => {
         (config) => config.name === instanceConfigName,
     );
 
+    const finalEnvVariables = filterEmptyObjectEntries(envVariables);
+    const finalRunEnvVariables = filterEmptyObjectEntries(runEnvVariables);
+    const finalLabels = filterEmptyObjectEntries(mergedLabels);
+
     const hash = generateInstanceHash({
         project,
         branch,
         instanceConfigName,
         vcs,
-        additionalEnvVariables: envVariables,
-        additionalRunEnvVariables: runEnvVariables,
+        additionalEnvVariables: finalEnvVariables,
+        additionalRunEnvVariables: finalRunEnvVariables,
     });
 
     let generateErrorMessage: string | null = null;
@@ -97,12 +101,12 @@ const generate = async (req: Request, res: Response) => {
             project,
             branch,
             description,
-            envVariables,
-            runEnvVariables,
+            envVariables: finalEnvVariables,
+            runEnvVariables: finalRunEnvVariables,
             urlTemplate: urlTemplate || instanceConfigNameConfig?.urlTemplate,
             vcs,
             instanceConfigName,
-            labels: mergedLabels,
+            labels: finalLabels,
         })
         .catch((e: Error) => {
             req.ctx.logError('GENERATE ERROR:', wrapInternalError(e));
