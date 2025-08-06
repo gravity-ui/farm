@@ -11,7 +11,7 @@ import type {
     GetInstanceConfigRequest,
     GetInstanceConfigResponse,
 } from '../../../shared/api/getInstanceConfig';
-import {ENV_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
+import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
 import {Page} from '../../components/layouts/Page/Page';
 import {ci18n} from '../../i18n-common/ci18n';
 import api from '../../services/api';
@@ -71,7 +71,7 @@ export const Create = () => {
             if (Array.isArray(fv.variables)) {
                 fv.variables.forEach(({key, value}) => {
                     if (key && value) {
-                        data[`${ENV_PREFIX}${key}`] = value;
+                        data[`${ENV_PREFIX}${key.trim()}`] = value.trim();
                     }
                 });
             }
@@ -79,7 +79,7 @@ export const Create = () => {
             if (Array.isArray(fv.runVariables)) {
                 fv.runVariables.forEach(({key, value}) => {
                     if (key && value) {
-                        data[`${RUN_ENV_PREFIX}${key}`] = value;
+                        data[`${RUN_ENV_PREFIX}${key.trim()}`] = value.trim();
                     }
                 });
             }
@@ -87,7 +87,7 @@ export const Create = () => {
             if (Array.isArray(fv.labels)) {
                 fv.labels.forEach(({key, value}) => {
                     if (data.labels) {
-                        data.labels[key] = value;
+                        data.labels[key.trim()] = value.trim();
                     }
                 });
             }
@@ -154,10 +154,19 @@ export const Create = () => {
 
         for (const [key, val] of params) {
             if (key.startsWith(ENV_PREFIX)) {
-                values.variables.push({key: key.slice(ENV_PREFIX.length), value: val});
+                values.variables.push({
+                    key: key.slice(ENV_PREFIX.length).trim(),
+                    value: val.trim(),
+                });
             }
             if (key.startsWith(RUN_ENV_PREFIX)) {
-                values.runVariables.push({key: key.slice(RUN_ENV_PREFIX.length), value: val});
+                values.runVariables.push({
+                    key: key.slice(RUN_ENV_PREFIX.length).trim(),
+                    value: val.trim(),
+                });
+            }
+            if (key.startsWith(LABEL_PREFIX)) {
+                values.labels.push({key: key.slice(LABEL_PREFIX.length).trim(), value: val.trim()});
             }
         }
 

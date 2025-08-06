@@ -1,5 +1,3 @@
-/* eslint-disable max-depth */
-
 import type {AppContext} from '@gravity-ui/nodekit';
 import {AppError} from '@gravity-ui/nodekit';
 import {isEmpty} from 'lodash';
@@ -7,7 +5,13 @@ import {isEmpty} from 'lodash';
 import type {Instance} from '../../../shared/common';
 import deleteInstance from '../../components/api-actions/deleteInstance';
 import {coreRegistry} from '../../components/core-plugin-registry';
-import {generateInstanceHash, runAll, runAllSync, wrapInternalError} from '../../utils/common';
+import {
+    filterEmptyObjectEntries,
+    generateInstanceHash,
+    runAll,
+    runAllSync,
+    wrapInternalError,
+} from '../../utils/common';
 import {getInstanceDescription} from '../../utils/common-db';
 import {getInstance, getInstancesByBranch, listInstances} from '../../utils/db';
 import {fetchProjectConfig} from '../../utils/farmJsonConfig';
@@ -58,13 +62,26 @@ export async function handleUnifiedPullRequest(
                 }),
             );
 
+            const finalLabels = labels ? filterEmptyObjectEntries(labels) : undefined;
+            const finalEnvVariables = commonData.envVariables
+                ? filterEmptyObjectEntries(commonData.envVariables)
+                : undefined;
+            const finalRunEnvVariables = commonData.runEnvVariables
+                ? filterEmptyObjectEntries(commonData.runEnvVariables)
+                : undefined;
+
             await runAllSync(configFile.preview, async (config) => {
                 let sameInstances: Instance[] | undefined;
 
-                if (labels && !isEmpty(labels) && uniqByLabels && uniqByLabels.length > 0) {
+                if (
+                    finalLabels &&
+                    !isEmpty(finalLabels) &&
+                    uniqByLabels &&
+                    uniqByLabels.length > 0
+                ) {
                     sameInstances = instances.filter((instance) => {
                         return uniqByLabels.every(
-                            (label) => instance.labels?.[label] === labels[label],
+                            (label) => instance.labels?.[label] === finalLabels[label],
                         );
                     });
                 }
@@ -84,8 +101,8 @@ export async function handleUnifiedPullRequest(
                     vcs,
                     branch: commonData.branch,
                     instanceConfigName: config.name,
-                    additionalEnvVariables: commonData.envVariables,
-                    additionalRunEnvVariables: commonData.runEnvVariables,
+                    additionalEnvVariables: finalEnvVariables,
+                    additionalRunEnvVariables: finalRunEnvVariables,
                 });
 
                 instanceHashMap.set(config.name, hash);
@@ -98,9 +115,9 @@ export async function handleUnifiedPullRequest(
                     instanceConfigName: config.name,
                     urlTemplate: config.urlTemplate,
                     description: commonData.description,
-                    envVariables: commonData.envVariables,
-                    runEnvVariables: commonData.runEnvVariables,
-                    labels,
+                    envVariables: finalEnvVariables,
+                    runEnvVariables: finalRunEnvVariables,
+                    labels: finalLabels,
                 });
             });
 
