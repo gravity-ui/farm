@@ -31,7 +31,7 @@ The final version may be slightly more complex, depending on the selected config
 Farm supports the following providers:
 
 - Docker
-- k8s
+- Kubernetes (k8s)
 
 Infrastructure complexity and scaling capabilities depend on the chosen provider.
 
@@ -48,7 +48,7 @@ Current limitations:
 - Partial BuildKit support (some features may not work)
 - File and directory mounting features are not supported (including secrets and similar functionality)
 
-**k8s**
+**Kubernetes (k8s)**
 
 With k8s, farm components, including instances and their build processes, run independently. This allows the farm to scale horizontally.
 
@@ -71,3 +71,9 @@ Configure the farm for your projects:
 # Continuous Integration
 
 [Read how to set up Farm in CI to generate application instances](./ci.md)
+
+# Security
+
+Currently, Farm does not have mechanisms to restrict access to instances and Farm UI/API. We recommend deploying Farm in a controlled environment and limiting access at the network level.
+
+Access restrictions will be implemented later.
