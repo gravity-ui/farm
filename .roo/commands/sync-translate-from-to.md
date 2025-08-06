@@ -61,22 +61,28 @@ The command takes two parameters:
 
 ```md
 # Synchronize all documents from Russian (source) to English (target)
-/sync-translate-from-to docs/ru docs/en
+/sync-translate-from-to from docs/ru to docs/en
 
 # Synchronize a specific file from Russian (source) to English (target)
-/sync-translate-from-to docs/ru/start.md docs/en/start.md
+/sync-translate-from-to from docs/ru/start.md to docs/en/start.md
 
 # Synchronize a specific file from Russian (source) to a target directory (file will be created)
-/sync-translate-from-to docs/ru/start.md docs/en
+/sync-translate-from-to from docs/ru/start.md to docs/en
 
 # Synchronize all documents from English (source) to Russian (target)
-/sync-translate-from-to docs/en docs/ru
+/sync-translate-from-to from docs/en to docs/ru
 
 # Synchronize a specific file from English (source) to Russian (target)
-/sync-translate-from-to docs/en/start.md docs/ru/start.md
+/sync-translate-from-to from docs/en/start.md to docs/ru/start.md
 
 # Synchronize a specific file from English (source) to a target directory (file will be created)
-/sync-translate-from-to docs/en/start.md docs/ru
+/sync-translate-from-to from docs/en/start.md to docs/ru
+
+# Create new translation file from source to target directory
+/sync-translate-from-to from docs/en/new-feature.md to docs/en/new-feature.md
+
+# Add content from source file to existing target file
+/sync-translate-from-to from docs/en/updates.md to docs/ru/updates.md
 ```
 
 ## Common scenarios
