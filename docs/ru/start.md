@@ -55,7 +55,7 @@ Self-hosted сервис для развертывания приложений 
 
 Рекомендуем начать с развёртывания одной из тестовых конфигураций фермы, а затем настроить ферму для своих проектов.
 
-- [Ферма с использованием Docker](../../base-environments/docker-provider-farm/README.md)
+- [Ферма с использованием Docker](../../base-environments/docker-provider-farm/README-ru.md)
 
 # Конфигурации
 

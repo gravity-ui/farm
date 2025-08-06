@@ -56,7 +56,7 @@ With k8s, farm components, including instances and their build processes, run in
 
 We recommend starting by deploying one of the test farm configurations, and then configuring the farm for your own projects.
 
-- [Farm with Docker provider](../../base-environments/docker-provider-farm/README.md)
+- [Farm with Docker provider](../../base-environments/docker-provider-farm/README-en.md)
 
 # Configurations
 
