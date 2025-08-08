@@ -369,6 +369,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             ...vcs.getK8sCheckoutCommands(generateData),
             `docker build . -f '${dockerfilePath}' -t ${targetImage} --network host`,
             `docker push ${targetImage}`,
+            `docker image rm ${targetImage}`,
         ];
 
         const {body: pod} = await this.k8sApi.createNamespacedPod(namespace, {
