@@ -276,7 +276,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     async stopInstance(hash: string): Promise<void> {
-        await this.deleteInstanceContainer(hash);
+        await this.stopInstanceContainer(hash);
     }
 
     async restartInstance(instance: Instance): Promise<void> {
@@ -289,7 +289,13 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     async getInstanceStatus(instance: Instance): Promise<InstanceProviderStatus> {
-        const [pod] = await this.listPods({hash: instance.hash});
+        const [deployment] = await this.listDeployments({hash: instance.hash});
+
+        if (!deployment) {
+            return 'unknown';
+        }
+
+        const [pod] = await this.readDeploymentPods(deployment);
 
         // If pod is not found, it means that instance is stopped
         if (!pod) {
@@ -300,16 +306,23 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     async getInstances(): Promise<InstanceProviderInfo[]> {
-        const pods = await this.listPods({
-            ...FARM_LABELS,
-            type: 'instance',
-        });
+        const deployments = await this.listDeployments(FARM_LABELS);
 
-        return pods.map<InstanceProviderInfo>((pod) => ({
-            hash: this.getInstanceHash(pod),
-            status: mapToFarmStatus(getContainerStatus(pod, INSTANCE_CONTAINER_NAME)),
-            startTime: getPodStartTime(pod),
-        }));
+        return Promise.all(
+            deployments.map<Promise<InstanceProviderInfo>>(async (deployment) => {
+                const hash = this.getInstanceHash(deployment);
+                const [pod] = await this.readDeploymentPods(deployment);
+
+                return {
+                    hash,
+                    // If pod is not found, it means that instance is stopped
+                    status: pod
+                        ? mapToFarmStatus(getContainerStatus(pod, INSTANCE_CONTAINER_NAME))
+                        : 'stopped',
+                    startTime: pod ? getPodStartTime(pod) : 0,
+                };
+            }),
+        );
     }
 
     async getInstanceLogs(params: {
@@ -380,7 +393,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 name: getBuilderPodName(hash),
                 labels: {
                     ...FARM_LABELS,
-                    type: 'builder',
                     hash,
                 },
             },
@@ -497,10 +509,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 },
                 template: {
                     metadata: {
-                        labels: {
-                            ...commonLabels,
-                            type: 'instance',
-                        },
+                        labels: commonLabels,
                     },
                     spec: {
                         containers: [
@@ -590,14 +599,33 @@ export class K8sFarmProvider extends BaseFarmProvider {
             },
         });
 
-        const pods = await this.waitForDeploymentPods(deployment, DEPLOYMENT_CREATION_TIMEOUT);
+        // Because we run only one pod for instance using replicas option above
+        const [pod] = await this.waitForDeploymentPods(deployment, DEPLOYMENT_CREATION_TIMEOUT);
 
-        if (pods.length === 0) {
+        if (!pod) {
             throw new Error(`No pods found for instance "${hash}"`);
         }
 
-        // Because we run only one pod for instance using replicas option above
-        return getContainerInfo(pods[0], INSTANCE_CONTAINER_NAME);
+        return getContainerInfo(pod, INSTANCE_CONTAINER_NAME);
+    }
+
+    protected async stopInstanceContainer(hash: string): Promise<void> {
+        const {deploymentName} = getInstanceResourceNames(hash);
+
+        // Scale down deployment to 0 replicas to remove all pods
+        await this.k8sApps
+            .patchNamespacedDeployment(
+                deploymentName,
+                this.config.namespace,
+                {spec: {replicas: 0}},
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                {headers: {'Content-type': k8s.PatchUtils.PATCH_FORMAT_STRATEGIC_MERGE_PATCH}},
+            )
+            .catch(ignoreNotFound);
     }
 
     protected async deleteInstanceContainer(hash: string): Promise<void> {
@@ -613,11 +641,11 @@ export class K8sFarmProvider extends BaseFarmProvider {
         }
     }
 
-    protected getInstanceHash(pod: k8s.V1Pod): string {
-        const hash = pod.metadata?.labels?.hash;
+    protected getInstanceHash(deployment: k8s.V1Deployment): string {
+        const hash = deployment.metadata?.labels?.hash;
 
         if (!hash) {
-            throw new Error(`Pod "${pod.metadata?.name}" has no hash label`);
+            throw new Error(`Deployment "${deployment.metadata?.name}" has no hash label`);
         }
 
         return hash;
@@ -674,6 +702,19 @@ export class K8sFarmProvider extends BaseFarmProvider {
         }
 
         return currentPods;
+    }
+
+    protected async listDeployments(labels: K8sLabels): Promise<k8s.V1Deployment[]> {
+        const {body: deployments} = await this.k8sApps.listNamespacedDeployment(
+            this.config.namespace,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            getLabelSelector(labels),
+        );
+
+        return deployments.items.filter((deployment) => !deployment.metadata?.deletionTimestamp);
     }
 
     protected async listPods(labels: K8sLabels): Promise<k8s.V1Pod[]> {
