@@ -74,8 +74,41 @@ export class DockerFarmProvider extends BaseFarmProvider {
 
     startup(): Promise<void> {
         this.healthcheckManager.startup();
+        this.schedulePruneDanglingImages();
 
         return Promise.resolve();
+    }
+
+    private schedulePruneDanglingImages(): void {
+        this.farmInternalApi.log('pruning dangling docker images process scheduled');
+
+        const dayMilliseconds = 1_000 * 60 * 60 * 24;
+        setInterval(async () => await this.pruneDanglingImages(), 2 * dayMilliseconds);
+    }
+
+    private async pruneDanglingImages(): Promise<void> {
+        try {
+            this.farmInternalApi.log('pruning dangling images');
+            const docker = this.getDocker();
+            const {ImagesDeleted} = await docker.pruneImages({
+                filter: {
+                    until: '48h',
+                },
+            });
+            if (Array.isArray(ImagesDeleted) && ImagesDeleted.length > 0) {
+                this.farmInternalApi.log(
+                    `pruning complete, removed ${ImagesDeleted.length} dangling images`,
+                    {imageIds: ImagesDeleted.map(({Deleted}) => Deleted)},
+                );
+            } else {
+                this.farmInternalApi.log('pruning complete, dangling images not found');
+            }
+        } catch (error) {
+            this.farmInternalApi.logError(
+                'unexpected error on attempt to prune dangling images',
+                error,
+            );
+        }
     }
 
     protected async checkHealth(hash: string, signal: AbortSignal): Promise<boolean> {
