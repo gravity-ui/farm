@@ -2,6 +2,7 @@ import nodeFs from 'node:fs';
 import nodePath from 'node:path';
 
 import Docker, {type RegistryConfig} from 'dockerode';
+import ms from 'ms';
 import type {SubscriptionObserver} from 'observable-fns';
 
 import type {
@@ -81,9 +82,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
 
     private schedulePruneDanglingImages(): void {
         this.farmInternalApi.log('pruning dangling docker images process scheduled');
-
-        const dayMilliseconds = 1_000 * 60 * 60 * 24;
-        setInterval(async () => await this.pruneDanglingImages(), 2 * dayMilliseconds);
+        setInterval(async () => await this.pruneDanglingImages(), ms('2 days'));
     }
 
     private async pruneDanglingImages(): Promise<void> {
