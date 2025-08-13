@@ -90,10 +90,24 @@ export const buildK8sEnvVariables = (env: Record<string, string>): k8s.V1EnvVar[
     }));
 };
 
+export const isNotFoundError = (error: k8s.HttpError): boolean => {
+    return error.statusCode === 404;
+};
+
 export const ignoreNotFound = (error: unknown): void => {
-    if (error instanceof k8s.HttpError && error.statusCode === 404) {
+    if (error instanceof k8s.HttpError && isNotFoundError(error)) {
         return;
     }
 
     throw error;
+};
+
+export const generateRandomString = (length: number): string => {
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+    let result = '';
+    for (let i = 0; i < length; ++i) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
 };

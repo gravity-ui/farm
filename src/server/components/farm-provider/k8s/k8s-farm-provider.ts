@@ -31,12 +31,14 @@ import type {
 } from './types';
 import {
     buildK8sEnvVariables,
+    generateRandomString,
     getContainerExitCode,
     getContainerInfo,
     getContainerStatus,
     getLabelSelector,
     getPodStartTime,
     ignoreNotFound,
+    isNotFoundError,
 } from './utils';
 
 const BUILDER_CONTAINER_NAME = 'builder';
@@ -80,8 +82,10 @@ const mapToFarmStatus = (containerStatus: K8sContainerStatus): InstanceProviderS
     return containerStatusMap[containerStatus] || 'unknown';
 };
 
-const getBuilderPodName = (hash: string): string => {
-    return `${hash}-builder`;
+const generateBuilderPodName = (hash: string): string => {
+    // Generate random string to avoid conflicts with other builder pods,
+    // use 5 characters like in k8s for deployment pods
+    return `${hash}-builder-${generateRandomString(5)}`;
 };
 
 const getInstanceResourceNames = (hash: string): K8sInstanceResourceNames => {
@@ -157,6 +161,8 @@ export class K8sFarmProvider extends BaseFarmProvider {
         generateData: GenerateInstanceData,
         observer: SubscriptionObserver<InstanceObservableEmitValue>,
     ): Promise<void> {
+        let builderInfo: K8sContainerInfo | undefined;
+
         try {
             const {hash, vcs, project, branch, instanceConfigName} = generateData;
 
@@ -180,8 +186,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             const instanceImage = this.getInstanceImage(project, hash);
 
             await wrapAsCommand(observer, 'Build image', async () => {
-                await this.deleteBuilderContainer(hash);
-                const builderInfo = await this.runBuilderContainer(
+                builderInfo = await this.runBuilderContainer(
                     generateData,
                     instanceConfig,
                     instanceImage,
@@ -231,14 +236,27 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 );
             });
         } catch (error) {
-            observer.next({config: {status: 'errored'}});
+            let normalizedError = error;
 
-            // k8s client has own error messages in body
-            if (error instanceof k8s.HttpError && typeof error.body.message === 'string') {
-                throw new Error(error.body.message);
+            if (error instanceof k8s.HttpError) {
+                // If builder pod is not found, it means that a build process was stopped
+                // and we don't need to throw an error, because it's expected
+                if (
+                    isNotFoundError(error) &&
+                    error.body.details?.kind === 'pods' &&
+                    error.body.details?.name === builderInfo?.podName
+                ) {
+                    return;
+                }
+
+                // k8s client has own error message in body
+                if (typeof error.body.message === 'string') {
+                    normalizedError = new Error(error.body.message);
+                }
             }
 
-            throw error;
+            observer.next({config: {status: 'errored'}});
+            throw normalizedError;
         }
     }
 
@@ -285,6 +303,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     async deleteInstance(hash: string): Promise<void> {
+        await this.deleteBuilderContainer(hash);
         await this.deleteInstanceContainer(hash);
     }
 
@@ -295,7 +314,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             return 'unknown';
         }
 
-        const [pod] = await this.readDeploymentPods(deployment);
+        const [pod] = await this.listDeploymentPods(deployment);
 
         // If pod is not found, it means that instance is stopped
         if (!pod) {
@@ -311,7 +330,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
         return Promise.all(
             deployments.map<Promise<InstanceProviderInfo>>(async (deployment) => {
                 const hash = this.getInstanceHash(deployment);
-                const [pod] = await this.readDeploymentPods(deployment);
+                const [pod] = await this.listDeploymentPods(deployment);
 
                 return {
                     hash,
@@ -390,9 +409,10 @@ export class K8sFarmProvider extends BaseFarmProvider {
             kind: 'Pod',
             metadata: {
                 namespace,
-                name: getBuilderPodName(hash),
+                name: generateBuilderPodName(hash),
                 labels: {
                     ...FARM_LABELS,
+                    type: 'builder',
                     hash,
                 },
             },
@@ -445,9 +465,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     protected async deleteBuilderContainer(hash: string): Promise<void> {
-        await this.k8sApi
-            .deleteNamespacedPod(getBuilderPodName(hash), this.config.namespace)
-            .catch(ignoreNotFound);
+        await this.deletePods({type: 'builder', hash});
     }
 
     protected async runInstanceContainer(
@@ -509,7 +527,10 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 },
                 template: {
                     metadata: {
-                        labels: commonLabels,
+                        labels: {
+                            ...commonLabels,
+                            type: 'instance',
+                        },
                     },
                     spec: {
                         containers: [
@@ -632,13 +653,13 @@ export class K8sFarmProvider extends BaseFarmProvider {
         const {namespace} = this.config;
         const {deploymentName, serviceName, ingressName} = getInstanceResourceNames(hash);
 
-        try {
-            await this.k8sApps.deleteNamespacedDeployment(deploymentName, namespace);
-            await this.k8sApi.deleteNamespacedService(serviceName, namespace);
-            await this.k8sNetworking.deleteNamespacedIngress(ingressName, namespace);
-        } catch (error) {
-            ignoreNotFound(error);
-        }
+        await this.k8sApps
+            .deleteNamespacedDeployment(deploymentName, namespace)
+            .catch(ignoreNotFound);
+        await this.k8sApi.deleteNamespacedService(serviceName, namespace).catch(ignoreNotFound);
+        await this.k8sNetworking
+            .deleteNamespacedIngress(ingressName, namespace)
+            .catch(ignoreNotFound);
     }
 
     protected getInstanceHash(deployment: k8s.V1Deployment): string {
@@ -652,7 +673,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     protected async readInstancePod(hash: string): Promise<k8s.V1Pod> {
-        const [pod] = await this.listPods({hash});
+        const [pod] = await this.listPods({type: 'instance', hash});
 
         if (!pod) {
             throw new Error(`Pod for instance "${hash}" not found`);
@@ -675,7 +696,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
         await this.k8sLog.log(namespace, podName, containerName, logStream, {follow: true});
     }
 
-    protected async readDeploymentPods(deployment: k8s.V1Deployment): Promise<k8s.V1Pod[]> {
+    protected async listDeploymentPods(deployment: k8s.V1Deployment): Promise<k8s.V1Pod[]> {
         const labels = deployment.spec?.selector.matchLabels;
 
         if (!labels) {
@@ -691,7 +712,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
         period = 1000,
     ): Promise<k8s.V1Pod[]> {
         const {value: currentPods, timedOut} = await waitFor(
-            () => this.readDeploymentPods(deployment),
+            () => this.listDeploymentPods(deployment),
             (pods) => pods.length > 0,
             timeout,
             period,
@@ -728,6 +749,18 @@ export class K8sFarmProvider extends BaseFarmProvider {
         );
 
         return pods.items.filter((pod) => !pod.metadata?.deletionTimestamp);
+    }
+
+    protected async deletePods(labels: K8sLabels): Promise<void> {
+        await this.k8sApi.deleteCollectionNamespacedPod(
+            this.config.namespace,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            getLabelSelector(labels),
+        );
     }
 
     protected async readContainerExitCode({
