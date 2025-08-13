@@ -1,9 +1,5 @@
 on:
-  workflow_dispatch:
-    inputs:
-      farm_version:
-        type: string
-        description: 'farm version'
+  workflow_dispatch: {}
   push:
     branches:
       - main
@@ -30,6 +26,10 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Extract version from package.json
+        id: extract_version
+        run: |
+          echo "FARM_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
       - uses: docker/setup-qemu-action@v3
         with:
           platforms: 'arm64'
@@ -47,7 +47,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ github.event.inputs.farm_version }}-docker-provider
+            type=raw,value=${{ env.FARM_VERSION }}-docker-provider
       - name: Build and push Docker Provider Farm
         uses: docker/build-push-action@v6.0.0
         with:
@@ -60,4 +60,4 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            FARM_VERSION=${{ github.event.inputs.farm_version }}
+            FARM_VERSION=${{ env.FARM_VERSION }}
