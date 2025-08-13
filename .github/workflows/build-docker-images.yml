@@ -1,0 +1,62 @@
+on:
+  workflow_dispatch:
+    inputs:
+      farm_version:
+        type: string
+        description: 'farm version'
+  push:
+    branches:
+      - main
+  schedule:
+    - cron:  '0 9 1,10,20,30 * *'
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+name: Build Farm Docker Images
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: gravity-ui/farm
+
+jobs:
+  build:
+    name: Build Docker Provider Farm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: 'arm64'
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract tags for Docker Provider Farm
+        id: meta-docker-provider
+        uses: docker/metadata-action@v5.0.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ github.event.inputs.farm_version }}-docker-provider
+      - name: Build and push Docker Provider Farm
+        uses: docker/build-push-action@v6.0.0
+        with:
+          context: .
+          file: ./docker-provider.Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta-docker-provider.outputs.tags }}
+          labels: ${{ steps.meta-docker-provider.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            FARM_VERSION=${{ github.event.inputs.farm_version }}
