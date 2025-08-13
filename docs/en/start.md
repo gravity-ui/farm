@@ -68,6 +68,8 @@ Configure the farm for your projects:
     - [K8s](./farm-config-json-k8s-provider.md)
 - Application build configuration in the Farm [`farm.json`](./farm-json.md)
 
+- [Farm API Reference](./farm-api.md)
+
 # Continuous Integration
 
 [Read how to set up Farm in CI to generate application instances](./ci.md)

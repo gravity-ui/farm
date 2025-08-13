@@ -67,6 +67,8 @@ Self-hosted сервис для развертывания приложений 
     - [K8s](./farm-config-json-k8s-provider.md)
 - Конфигурация сборки приложения в ферме [`farm.json`](./farm-json.md)
 
+- [Справочник Farm API](./farm-api.md)
+
 # Continuous Integration
 
 [Читать как настроить Ферму в CI для генерации инстансов приложений](./ci.md)
