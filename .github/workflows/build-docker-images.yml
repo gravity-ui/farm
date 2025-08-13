@@ -1,11 +1,10 @@
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - main
-      - opensource-docs
-  schedule:
-    - cron:  '0 9 1,10,20,30 * *'
+  # push:
+  #   branches:
+  #     - main
+  # schedule:
+  #   - cron:  '0 9 1,10,20,30 * *'
 
 concurrency:
   group: ${{ github.workflow }}
