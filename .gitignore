@@ -8,6 +8,7 @@ lib-cov
 *.gz
 *.sock
 *.db
+*.DS_Store
 
 npm-debug.log
 
