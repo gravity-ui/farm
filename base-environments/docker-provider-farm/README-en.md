@@ -26,6 +26,7 @@ Use `FARM_DEPLOYMENT_MODE` to define mode: `vm` or `docker_container`.
   - Prepare `farm-nginx.conf` — Main Farm Nginx rules.
   - Prepare `docker-proxy.conf` (for VM only).
   - Prepare `.env` file (farm docker container only).
+  - Prepare `farm.dockerfile`.
 
 - **Build own project Farm image with configurations:**
 
@@ -106,3 +107,4 @@ sudo ip6tables -t nat -A POSTROUTING \! -o docker0 -j MASQUERADE
 ```
 
 > If the issue appears again, repeat the network configuration commands.
+
