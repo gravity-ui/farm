@@ -10,7 +10,7 @@ Self-hosted service for deploying applications from pull-requests.
 
 [Russian documentation.](./docs/ru/start.md)
 
-# Farm UI
+## Farm UI
 
 **Projects:**
 
