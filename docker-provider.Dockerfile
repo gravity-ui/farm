@@ -3,6 +3,7 @@ ARG BASE_IMAGE=ghcr.io/gravity-ui/node-nginx:ubuntu22-nodejs20-full.2025-01-24
 FROM $BASE_IMAGE AS build-stage
 WORKDIR /opt/app
 
+COPY dist/public dist/public
 COPY package.json package-lock.json tsconfig.json app-builder.config.ts ./
 COPY src ./src
 RUN <<EOT
