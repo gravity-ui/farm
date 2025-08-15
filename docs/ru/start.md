@@ -66,6 +66,7 @@ Self-hosted сервис для развертывания приложений 
     - [Docker](./farm-config-json-docker-provider.md)
     - [K8s](./farm-config-json-k8s-provider.md)
 - Конфигурация сборки приложения в ферме [`farm.json`](./farm-json.md)
+- Переменные окружения [`env.md`](./env.md)
 
 - [Справочник Farm API](./farm-api.md)
 

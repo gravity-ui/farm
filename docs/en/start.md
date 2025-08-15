@@ -67,6 +67,7 @@ Configure the farm for your projects:
     - [Docker](./farm-config-json-docker-provider.md)
     - [K8s](./farm-config-json-k8s-provider.md)
 - Application build configuration in the Farm [`farm.json`](./farm-json.md)
+- Environment Variables [`env.md`](./env.md)
 
 - [Farm API Reference](./farm-api.md)
 
