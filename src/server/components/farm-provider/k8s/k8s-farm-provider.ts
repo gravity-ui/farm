@@ -10,7 +10,7 @@ import type {
 } from '../../../../shared/common';
 import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../../models/common';
 import {CommandError} from '../../../utils/command-error';
-import {generateInstanceHref} from '../../../utils/common';
+import {generateInstanceHref, wrapInternalError} from '../../../utils/common';
 import {
     type FarmJsonConfig,
     fetchProjectConfig,
@@ -25,6 +25,7 @@ import {BaseFarmProvider} from '../base-provider';
 import {K8sContainerStatus} from './constants';
 import type {
     FarmK8sProviderConfig,
+    K8sBuilderPodSpec,
     K8sContainerInfo,
     K8sInstanceResourceNames,
     K8sLabels,
@@ -38,14 +39,24 @@ import {
     getLabelSelector,
     getPodStartTime,
     ignoreNotFound,
+    isNodeActive,
     isNotFoundError,
 } from './utils';
 
+const MANAGER_NAME = 'Farm';
+
+const CLEANER_JOB_NAME = 'farm-cleaner';
+
 const BUILDER_CONTAINER_NAME = 'builder';
+const CLEANER_CONTAINER_NAME = 'cleaner';
 const INSTANCE_CONTAINER_NAME = 'application';
 
-const FARM_LABELS = {
-    'app.kubernetes.io/managed-by': 'Farm',
+const FARM_LABELS: K8sLabels = {
+    'app.kubernetes.io/managed-by': MANAGER_NAME,
+};
+const CLEANER_LABELS: K8sLabels = {
+    ...FARM_LABELS,
+    jobgroup: CLEANER_JOB_NAME,
 };
 
 const DEPLOYMENT_CREATION_TIMEOUT = 30 * 1000;
@@ -116,6 +127,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
     declare protected k8sApi: k8s.CoreV1Api;
     declare protected k8sApps: k8s.AppsV1Api;
     declare protected k8sNetworking: k8s.NetworkingV1Api;
+    declare protected k8sBatch: k8s.BatchV1Api;
     declare protected k8sLog: k8s.Log;
 
     constructor(farmInternalApi: FarmInternalApi, config: FarmK8sProviderConfig) {
@@ -142,6 +154,13 @@ export class K8sFarmProvider extends BaseFarmProvider {
             buildTimeout: config.buildTimeout ?? 20 * 60 * 1000,
             builderResources: config.builderResources ?? null,
             instanceResources: config.instanceResources ?? null,
+            disableCleaner: config.disableCleaner ?? false,
+            cleanerNodesCountWatcherPeriodSeconds:
+                config.cleanerNodesCountWatcherPeriodSeconds ?? 60,
+            cleanerSchedule: config.cleanerSchedule ?? '0 3 * * *',
+            cleanerRandomDelayMinutes: config.cleanerRandomDelayMinutes ?? 2 * 60,
+            cleanerJobsHistoryLimit: config.cleanerJobsHistoryLimit ?? 5,
+            cleanerPruneFilter: config.cleanerPruneFilter ?? 'until=24h',
         };
 
         const kubeConfig = new k8s.KubeConfig();
@@ -150,10 +169,15 @@ export class K8sFarmProvider extends BaseFarmProvider {
         this.k8sApi = kubeConfig.makeApiClient(k8s.CoreV1Api);
         this.k8sApps = kubeConfig.makeApiClient(k8s.AppsV1Api);
         this.k8sNetworking = kubeConfig.makeApiClient(k8s.NetworkingV1Api);
+        this.k8sBatch = kubeConfig.makeApiClient(k8s.BatchV1Api);
         this.k8sLog = new k8s.Log(kubeConfig);
     }
 
     async startup(): Promise<void> {
+        if (!this.config.disableCleaner) {
+            this.startCleaner();
+        }
+
         return Promise.resolve();
     }
 
@@ -379,8 +403,8 @@ export class K8sFarmProvider extends BaseFarmProvider {
         instanceConfig: FarmJsonConfig,
         targetImage: string,
     ): Promise<K8sContainerInfo> {
-        const {namespace, dockerSocketHostPath, dockerCredsHostPath} = this.config;
-        const {vcs: projectVcs, hash} = generateData;
+        const {namespace} = this.config;
+        const {hash} = generateData;
         const {
             env,
             dockerfilePath = this.config.dockerfilePath,
@@ -389,26 +413,28 @@ export class K8sFarmProvider extends BaseFarmProvider {
             k8sBuilderResources: builderResources = this.config.builderResources,
         } = instanceConfig;
 
-        const buildEnvVariables = {
-            ...env,
-            ...generateData.envVariables,
-        };
+        const vcs = getVcs(generateData.vcs);
 
-        const vcs = getVcs(projectVcs);
-
-        const commands = [
-            'set -ex',
-            ...vcs.getK8sCheckoutCommands(generateData),
-            `docker build . -f '${dockerfilePath}' -t ${targetImage} --network host`,
-            `docker push ${targetImage}`,
-            `docker image rm ${targetImage}`,
-        ];
+        const builderPodSpec = this.getBuilderPodSpec({
+            image: builderImage,
+            envSecretName: builderEnvSecretName ?? undefined,
+            resources: builderResources ?? undefined,
+            containerName: BUILDER_CONTAINER_NAME,
+            envVariables: {
+                ...env,
+                ...generateData.envVariables,
+            },
+            commands: [
+                ...vcs.getK8sCheckoutCommands(generateData),
+                `docker build . -f '${dockerfilePath}' -t ${targetImage} --network host`,
+                `docker push ${targetImage}`,
+            ],
+        });
 
         const {body: pod} = await this.k8sApi.createNamespacedPod(namespace, {
             apiVersion: 'v1',
             kind: 'Pod',
             metadata: {
-                namespace,
                 name: generateBuilderPodName(hash),
                 labels: {
                     ...FARM_LABELS,
@@ -417,46 +443,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 },
             },
             spec: {
-                containers: [
-                    {
-                        name: BUILDER_CONTAINER_NAME,
-                        image: builderImage,
-                        imagePullPolicy: 'IfNotPresent',
-                        volumeMounts: [
-                            {
-                                name: 'docker-socket',
-                                mountPath: '/var/run/docker.sock',
-                            },
-                            {
-                                name: 'docker-creds',
-                                mountPath: '/root/.docker/config.json',
-                            },
-                        ],
-                        ...(builderEnvSecretName
-                            ? {envFrom: [{secretRef: {name: builderEnvSecretName}}]}
-                            : {}),
-                        env: buildK8sEnvVariables(buildEnvVariables),
-                        command: ['/bin/sh', '-c'],
-                        args: [commands.join('\n')],
-                        resources: builderResources ?? undefined,
-                    },
-                ],
-                volumes: [
-                    {
-                        name: 'docker-socket',
-                        hostPath: {
-                            path: dockerSocketHostPath,
-                            type: 'Socket',
-                        },
-                    },
-                    {
-                        name: 'docker-creds',
-                        hostPath: {
-                            path: dockerCredsHostPath,
-                            type: 'File',
-                        },
-                    },
-                ],
+                ...builderPodSpec,
                 restartPolicy: 'Never',
             },
         });
@@ -517,7 +504,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
             apiVersion: 'apps/v1',
             kind: 'Deployment',
             metadata: {
-                namespace,
                 name: deploymentName,
                 labels: commonLabels,
             },
@@ -564,7 +550,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
             apiVersion: 'v1',
             kind: 'Service',
             metadata: {
-                namespace,
                 name: serviceName,
                 labels: commonLabels,
             },
@@ -588,7 +573,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
             apiVersion: 'networking.k8s.io/v1',
             kind: 'Ingress',
             metadata: {
-                namespace,
                 name: ingressName,
                 labels: commonLabels,
                 annotations: ingressAnnotations || undefined,
@@ -805,5 +789,174 @@ export class K8sFarmProvider extends BaseFarmProvider {
         }
 
         return currentStatus;
+    }
+
+    protected startCleaner(): void {
+        this.farmInternalApi.log('Start cleaner: start');
+
+        const performNodesCount = async () => {
+            try {
+                this.farmInternalApi.log('Perform nodes count: start');
+
+                const {body: nodes} = await this.k8sApi.listNode();
+                const activeNodes = nodes.items.filter(isNodeActive);
+                this.farmInternalApi.log('Perform nodes count: got nodes', {
+                    totalNodesCount: nodes.items.length,
+                    activeNodesCount: activeNodes.length,
+                });
+
+                this.farmInternalApi.log('Perform nodes count: update cleaner job');
+                await this.updateCleanerJob(activeNodes.length);
+
+                this.farmInternalApi.log('Perform nodes count: end');
+            } catch (error) {
+                this.farmInternalApi.logError(
+                    'Perform nodes count: error',
+                    wrapInternalError(error),
+                );
+            } finally {
+                setTimeout(
+                    performNodesCount,
+                    this.config.cleanerNodesCountWatcherPeriodSeconds * 1000,
+                );
+                this.farmInternalApi.log('Perform nodes count: scheduled');
+            }
+        };
+
+        performNodesCount().catch((error) => {
+            this.farmInternalApi.logError('Start cleaner: error', wrapInternalError(error));
+        });
+        this.farmInternalApi.log('Start cleaner: end');
+    }
+
+    protected async updateCleanerJob(activeNodesCount: number): Promise<void> {
+        const {
+            namespace,
+            cleanerSchedule,
+            cleanerRandomDelayMinutes,
+            cleanerJobsHistoryLimit,
+            cleanerPruneFilter,
+            builderImage,
+        } = this.config;
+
+        const randomDelay = Math.floor(Math.random() * cleanerRandomDelayMinutes * 60);
+
+        const builderPodSpec = this.getBuilderPodSpec({
+            image: builderImage,
+            containerName: CLEANER_CONTAINER_NAME,
+            commands: [
+                `sleep ${randomDelay}`,
+                `docker system prune --force --filter '${cleanerPruneFilter}'`,
+            ],
+        });
+
+        const cronJob: k8s.V1CronJob = {
+            apiVersion: 'batch/v1',
+            kind: 'CronJob',
+            metadata: {
+                name: CLEANER_JOB_NAME,
+                labels: CLEANER_LABELS,
+            },
+            spec: {
+                schedule: cleanerSchedule,
+                successfulJobsHistoryLimit: cleanerJobsHistoryLimit,
+                failedJobsHistoryLimit: cleanerJobsHistoryLimit,
+                jobTemplate: {
+                    spec: {
+                        template: {
+                            metadata: {
+                                labels: {
+                                    ...CLEANER_LABELS,
+                                    type: 'cleaner',
+                                },
+                            },
+                            spec: {
+                                ...builderPodSpec,
+                                restartPolicy: 'Never',
+                                terminationGracePeriodSeconds: 0,
+                                // `topologySpreadConstraints` allows the cleanup job to be evenly distributed across the cluster nodes,
+                                // the number of pods for the job is set by the `parallelism` setting,
+                                // which equals the number of active nodes in the cluster.
+                                // In combination, this ensures that the cleanup job runs on each node in the cluster.
+                                topologySpreadConstraints: [
+                                    {
+                                        maxSkew: 1,
+                                        topologyKey: 'kubernetes.io/hostname',
+                                        whenUnsatisfiable: 'DoNotSchedule',
+                                        labelSelector: {
+                                            matchLabels: CLEANER_LABELS,
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                        parallelism: activeNodesCount,
+                    },
+                },
+                // Prevents the simultaneous execution of multiple cleanup jobs at the same time
+                concurrencyPolicy: 'Forbid',
+            },
+        };
+
+        await this.k8sBatch.patchNamespacedCronJob(
+            CLEANER_JOB_NAME,
+            namespace,
+            cronJob,
+            undefined,
+            undefined,
+            MANAGER_NAME,
+            undefined,
+            true,
+            // This makes the operation an upsert
+            {headers: {'Content-type': k8s.PatchUtils.PATCH_FORMAT_APPLY_YAML}},
+        );
+    }
+
+    protected getBuilderPodSpec(
+        spec: K8sBuilderPodSpec,
+    ): Pick<k8s.V1PodSpec, 'containers' | 'volumes'> {
+        const {dockerSocketHostPath, dockerCredsHostPath} = this.config;
+        const {containerName, image, envSecretName, resources, envVariables, commands} = spec;
+
+        return {
+            containers: [
+                {
+                    name: containerName,
+                    image,
+                    imagePullPolicy: 'IfNotPresent',
+                    volumeMounts: [
+                        {
+                            name: 'docker-socket',
+                            mountPath: '/var/run/docker.sock',
+                        },
+                        {
+                            name: 'docker-creds',
+                            mountPath: '/root/.docker/config.json',
+                        },
+                    ],
+                    ...(envSecretName ? {envFrom: [{secretRef: {name: envSecretName}}]} : {}),
+                    env: envVariables ? buildK8sEnvVariables(envVariables) : undefined,
+                    command: ['/bin/sh', '-c'],
+                    args: [['set -ex', ...commands].join('\n')],
+                    resources,
+                },
+            ],
+            volumes: [
+                {
+                    name: 'docker-socket',
+                    hostPath: {
+                        path: dockerSocketHostPath,
+                        type: 'Socket',
+                    },
+                },
+                {
+                    name: 'docker-creds',
+                    hostPath: {
+                        path: dockerCredsHostPath,
+                        type: 'File',
+                    },
+                },
+            ],
+        };
     }
 }

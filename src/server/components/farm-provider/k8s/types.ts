@@ -11,6 +11,15 @@ export interface K8sContainerInfo extends K8sPodInfo {
     containerName: string;
 }
 
+export interface K8sBuilderPodSpec {
+    image: string;
+    envSecretName?: string;
+    resources?: k8s.V1ResourceRequirements;
+    containerName: string;
+    envVariables?: Record<string, string>;
+    commands: string[];
+}
+
 export interface K8sInstanceResourceNames {
     deploymentName: string;
     serviceName: string;
@@ -26,6 +35,12 @@ export interface FarmK8sProviderConfig {
     ingressClassName?: string;
     ingressAnnotations?: Record<string, string> | null;
     ingressTlsSecretName?: string | null;
+    disableCleaner?: boolean;
+    cleanerNodesCountWatcherPeriodSeconds?: number;
+    cleanerSchedule?: string;
+    cleanerRandomDelayMinutes?: number;
+    cleanerJobsHistoryLimit?: number;
+    cleanerPruneFilter?: string;
 
     // Instance defaults
     dockerfilePath?: string;

@@ -66,7 +66,6 @@ export class HealthcheckManager {
     declare private entries: Map<string, HealthcheckEntry>;
 
     declare private log: HealthcheckManagerConfig['log'];
-
     declare private logError: HealthcheckManagerConfig['logError'];
 
     constructor(config: HealthcheckManagerConfig) {
@@ -85,39 +84,39 @@ export class HealthcheckManager {
     }
 
     startup() {
-        this.log('Healthcheck Manager startup');
+        this.log('Healthcheck startup: start');
+
         const performInstances = async () => {
             try {
-                this.log('healthcheck perform instances start');
+                this.log('Healthcheck perform instances: start');
+
                 const instances = await this.config.getInstances();
-                this.log('healthcheck perform instances end', {
+                this.log('Healthcheck perform instances: got instances', {
                     count: instances.length,
                     instances: instances.map((instance) => pick(instance, ['key', 'isRunning'])),
                 });
+
                 instances.forEach((instance) => {
                     if (instance.isRunning) {
                         this.register(instance.key, instance.config);
                     } else {
-                        this.log('healthcheck: instance is not running', {
-                            instance,
-                        });
                         this.unregister(instance.key);
                     }
                 });
-            } catch (err) {
-                this.logError('healthcheck performInstances err', wrapInternalError(err));
+
+                this.log('Healthcheck perform instances: end');
+            } catch (error) {
+                this.logError('Healthcheck perform instances: error', wrapInternalError(error));
             } finally {
                 setTimeout(performInstances, this.config.performInstancesPeriodSeconds * 1000);
-                this.log('healthcheck perform instances scheduled');
+                this.log('Healthcheck perform instances: scheduled');
             }
         };
 
-        performInstances().catch((err) => {
-            this.logError(
-                'healthcheck startup: unexpected error from perform instances',
-                wrapInternalError(err),
-            );
+        performInstances().catch((error) => {
+            this.logError('Healthcheck startup: error', wrapInternalError(error));
         });
+        this.log('Healthcheck startup: end');
     }
 
     getStatus(key: string): HealthcheckStatus {
@@ -165,6 +164,8 @@ export class HealthcheckManager {
             return;
         }
 
+        this.log('Healthcheck start healthcheck: start', {key});
+
         const performHealthcheck = async () => {
             entry = this.entries.get(key);
 
@@ -174,25 +175,20 @@ export class HealthcheckManager {
 
             entry.state.currentTimer = null;
 
-            this.log('healthcheck perform healthcheck: start', {
-                key,
-            });
+            this.log('Healthcheck perform healthcheck: start', {key});
 
             try {
                 const isHealthy = await this.config.checkHealth(
                     key,
                     AbortSignal.timeout(entry.config.timeoutSeconds * 1000),
                 );
-
-                this.log('healthcheck perform healthcheck: done', {
-                    key,
-                    isHealthy,
-                });
                 this.updateState(key, isHealthy);
-            } catch (err) {
-                this.logError('healthcheck perform err', wrapInternalError(err), {
+                this.log('Healthcheck perform healthcheck: end', {key, isHealthy});
+            } catch (error) {
+                this.logError('Healthcheck perform healthcheck: error', wrapInternalError(error), {
                     key,
                 });
+
                 this.updateState(key, false);
             } finally {
                 entry = this.entries.get(key);
@@ -202,6 +198,7 @@ export class HealthcheckManager {
                         performHealthcheck,
                         entry.config.periodSeconds * 1000,
                     );
+                    this.log('Healthcheck perform healthcheck: scheduled', {key});
                 }
             }
         };
@@ -210,6 +207,7 @@ export class HealthcheckManager {
             performHealthcheck,
             entry.config.initialDelaySeconds * 1000,
         );
+        this.log('Healthcheck perform healthcheck: scheduled', {key});
     }
 
     private stopHealthcheck(key: string): void {
