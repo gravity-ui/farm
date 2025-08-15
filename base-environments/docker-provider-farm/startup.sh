@@ -16,6 +16,7 @@ fi
 docker rm --force farm || echo "No actual farm container"
 docker run \
 -d \
+--restart unless-stopped \
 --ulimit nofile=65536:65536 \
 --privileged -it \
 --env-file .env \
