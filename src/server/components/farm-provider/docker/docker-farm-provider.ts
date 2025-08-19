@@ -1,6 +1,7 @@
 import nodeFs from 'node:fs';
 import nodePath from 'node:path';
 
+import {CronJob, validateCronExpression} from 'cron';
 import Docker, {type RegistryConfig} from 'dockerode';
 import type {SubscriptionObserver} from 'observable-fns';
 
@@ -30,7 +31,6 @@ import {
     FARM_DOCKER_ENTITY_PREFIX,
 } from './constants';
 import type {FarmDockerProviderConfig} from './types';
-import {CronJob, validateCronExpression} from 'cron';
 
 const DockerStateToInstanceStatusMap: Record<DockerContainerState, InstanceProviderStatus> = {
     created: 'starting',
