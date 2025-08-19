@@ -82,7 +82,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
     }
 
     private parseMaintenanceCronTime(expression?: string): string {
-        const defaultMaintenanceCronTime = '0 3 * * *'; // everyday in 3 am
+        const defaultMaintenanceCronTime = '0 3 * * *'; // every day at 3 a.m.
         if (!expression) {
             return defaultMaintenanceCronTime;
         }
