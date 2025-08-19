@@ -2,7 +2,6 @@ import nodeFs from 'node:fs';
 import nodePath from 'node:path';
 
 import Docker, {type RegistryConfig} from 'dockerode';
-import ms from 'ms';
 import type {SubscriptionObserver} from 'observable-fns';
 
 import type {
@@ -31,6 +30,7 @@ import {
     FARM_DOCKER_ENTITY_PREFIX,
 } from './constants';
 import type {FarmDockerProviderConfig} from './types';
+import {CronJob, validateCronExpression} from 'cron';
 
 const DockerStateToInstanceStatusMap: Record<DockerContainerState, InstanceProviderStatus> = {
     created: 'starting',
@@ -63,6 +63,9 @@ export class DockerFarmProvider extends BaseFarmProvider {
                 path: config?.instanceHealthcheck?.path ?? '/',
             },
             imageBuildVersion: config?.imageBuildVersion ?? '1',
+            maintenanceCronExpression: this.parseMaintenanceCronExpression(
+                config?.maintenanceCronExpression,
+            ),
         };
 
         this.healthcheckManager = new HealthcheckManager({
@@ -75,14 +78,45 @@ export class DockerFarmProvider extends BaseFarmProvider {
 
     startup(): Promise<void> {
         this.healthcheckManager.startup();
-        this.schedulePruneDanglingImages();
+        this.scheduleMaintenance();
 
         return Promise.resolve();
     }
 
-    private schedulePruneDanglingImages(): void {
-        this.farmInternalApi.log('pruning dangling docker images process scheduled');
-        setInterval(async () => await this.pruneDanglingImages(), ms('2 days'));
+    private parseMaintenanceCronExpression(expression?: string): string {
+        const defaultMaintenanceCronExpression = '0 3 * * *'; // everyday in 3 am
+        if (!expression) {
+            return defaultMaintenanceCronExpression;
+        }
+
+        const validationResult = validateCronExpression(expression);
+        if (!validationResult.valid) {
+            this.farmInternalApi.logError(
+                'maintenanceCronExpression validation error, using default expression',
+                validationResult.error,
+            );
+            return defaultMaintenanceCronExpression;
+        }
+
+        return expression;
+    }
+
+    private scheduleMaintenance(): void {
+        const logScheduleDateTime = () =>
+            this.farmInternalApi.log(`next maintenance scheduled on ${job.nextDate().toString()}`);
+        const job = CronJob.from({
+            cronTime: this.config.maintenanceCronExpression,
+            onTick: async () => {
+                this.farmInternalApi.log('maintenance started');
+
+                await this.pruneDanglingImages();
+                logScheduleDateTime();
+            },
+            waitForCompletion: true,
+            start: true,
+        });
+
+        logScheduleDateTime();
     }
 
     private async pruneDanglingImages(): Promise<void> {
@@ -91,7 +125,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
             const docker = this.getDocker();
             const {ImagesDeleted} = await docker.pruneImages({
                 filter: {
-                    until: '48h',
+                    until: '24h',
                 },
             });
             if (Array.isArray(ImagesDeleted) && ImagesDeleted.length > 0) {
