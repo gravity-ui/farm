@@ -63,9 +63,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
                 path: config?.instanceHealthcheck?.path ?? '/',
             },
             imageBuildVersion: config?.imageBuildVersion ?? '1',
-            maintenanceCronExpression: this.parseMaintenanceCronExpression(
-                config?.maintenanceCronExpression,
-            ),
+            maintenanceCronTime: this.parseMaintenanceCronTime(config?.maintenanceCronTime),
         };
 
         this.healthcheckManager = new HealthcheckManager({
@@ -83,19 +81,19 @@ export class DockerFarmProvider extends BaseFarmProvider {
         return Promise.resolve();
     }
 
-    private parseMaintenanceCronExpression(expression?: string): string {
-        const defaultMaintenanceCronExpression = '0 3 * * *'; // everyday in 3 am
+    private parseMaintenanceCronTime(expression?: string): string {
+        const defaultMaintenanceCronTime = '0 3 * * *'; // everyday in 3 am
         if (!expression) {
-            return defaultMaintenanceCronExpression;
+            return defaultMaintenanceCronTime;
         }
 
         const validationResult = validateCronExpression(expression);
         if (!validationResult.valid) {
             this.farmInternalApi.logError(
-                'maintenanceCronExpression validation error, using default expression',
+                'maintenanceCronTime validation error, using default expression',
                 validationResult.error,
             );
-            return defaultMaintenanceCronExpression;
+            return defaultMaintenanceCronTime;
         }
 
         return expression;
@@ -105,7 +103,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
         const logScheduleDateTime = () =>
             this.farmInternalApi.log(`next maintenance scheduled on ${job.nextDate().toString()}`);
         const job = CronJob.from({
-            cronTime: this.config.maintenanceCronExpression,
+            cronTime: this.config.maintenanceCronTime,
             onTick: async () => {
                 this.farmInternalApi.log('maintenance started');
 

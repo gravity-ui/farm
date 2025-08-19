@@ -12,5 +12,5 @@ export interface FarmDockerProviderConfig {
     socketPath?: string;
     instanceHealthcheck?: DockerInstanceHealthcheck;
     imageBuildVersion?: ImageBuildOptions['version'];
-    maintenanceCronExpression?: string;
+    maintenanceCronTime?: string;
 }
