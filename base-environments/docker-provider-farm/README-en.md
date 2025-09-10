@@ -54,6 +54,16 @@ chmod +x ./startup.sh
 
 Run `./startup.sh`.
 
+- **Quick Nginx setup on host (farm docker container only):**
+
+For quick Nginx setup and launch on host, you can use `host-nginx-docker-compose.yml`:
+
+```bash
+docker-compose -f host-nginx-docker-compose.yml up -d
+```
+
+This will start Nginx in a Docker container with pre-configured rules for routing requests to Farm.
+
 ## IPv6 troubleshooting
 
 When using an ipv6 environment, you may have problems accessing the external Internet from a container. Here are recommendations that can help:
