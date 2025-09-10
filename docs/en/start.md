@@ -37,7 +37,7 @@ Infrastructure complexity and scaling capabilities depend on the chosen provider
 
 **Docker**
 
-When using the Docker provider, the farm can only run on a single virtual machine. The load balancer, farm service, and built instances will share the resources of one virtual machine.
+When using the Docker provider, the farm can only run on a single virtual machine. The load balancer, farm service, and built instances will share common resources.
 
 This is an economical and simple option for small teams.
 
