@@ -55,6 +55,11 @@ The command takes two parameters:
    - Searches for specific sections of content and replaces them while preserving the rest of the document
    - Ensures surgical edits without affecting unrelated parts of the translation
 
+6. For reviewing changes:
+   - You can use `git diff` to view and compare the changes made to files
+   - This allows you to see exactly what content was added, removed, or modified
+   - Helps verify that the synchronization process worked as expected and preserves existing translations
+
 **Important**: The synchronization is unidirectional from Source to Target. The Target files are updated based on the Source files, not vice versa.
 
 ## Usage examples
