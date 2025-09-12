@@ -54,6 +54,7 @@
     "@gravity-ui/nodekit": "^2.4.2",
     "@kubernetes/client-node": "^0.20.0",
     "axios": "^1.9.0",
+    "cron": "^4.3.3",
     "dockerode": "^4.0.4",
     "express-csp-header": "^5.2.1",
     "highlight.js": "^11.10.0",

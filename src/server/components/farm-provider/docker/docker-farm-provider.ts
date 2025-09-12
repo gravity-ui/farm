@@ -1,6 +1,7 @@
 import nodeFs from 'node:fs';
 import nodePath from 'node:path';
 
+import {CronJob, validateCronExpression} from 'cron';
 import Docker, {type RegistryConfig} from 'dockerode';
 import type {SubscriptionObserver} from 'observable-fns';
 
@@ -62,6 +63,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
                 path: config?.instanceHealthcheck?.path ?? '/',
             },
             imageBuildVersion: config?.imageBuildVersion ?? '1',
+            maintenanceCronTime: this.parseMaintenanceCronTime(config?.maintenanceCronTime),
         };
 
         this.healthcheckManager = new HealthcheckManager({
@@ -74,8 +76,74 @@ export class DockerFarmProvider extends BaseFarmProvider {
 
     startup(): Promise<void> {
         this.healthcheckManager.startup();
+        this.scheduleMaintenance();
 
         return Promise.resolve();
+    }
+
+    private parseMaintenanceCronTime(expression?: string): string {
+        const defaultMaintenanceCronTime = '0 3 * * *'; // every day at 3 a.m.
+        if (!expression) {
+            return defaultMaintenanceCronTime;
+        }
+
+        const validationResult = validateCronExpression(expression);
+        if (!validationResult.valid) {
+            this.farmInternalApi.logError(
+                'maintenanceCronTime validation error, using default expression',
+                validationResult.error,
+            );
+            return defaultMaintenanceCronTime;
+        }
+
+        return expression;
+    }
+
+    private scheduleMaintenance(): void {
+        const logScheduleDateTime = () =>
+            this.farmInternalApi.log(
+                `next maintenance scheduled on ${job.nextDate().toJSDate().toString()}`,
+            );
+        const job = CronJob.from({
+            cronTime: this.config.maintenanceCronTime,
+            onTick: async () => {
+                this.farmInternalApi.log(
+                    `maintenance was scheduled on ${job.lastExecution?.toString()} and started at ${new Date().toString()}`,
+                );
+
+                await this.pruneDanglingImages();
+                logScheduleDateTime();
+            },
+            waitForCompletion: true,
+            start: true,
+        });
+
+        logScheduleDateTime();
+    }
+
+    private async pruneDanglingImages(): Promise<void> {
+        try {
+            this.farmInternalApi.log('pruning dangling images');
+            const docker = this.getDocker();
+            const {ImagesDeleted} = await docker.pruneImages({
+                filter: {
+                    until: '24h',
+                },
+            });
+            if (Array.isArray(ImagesDeleted) && ImagesDeleted.length > 0) {
+                this.farmInternalApi.log(
+                    `pruning complete, removed ${ImagesDeleted.length} dangling images`,
+                    {imageIds: ImagesDeleted.map(({Deleted}) => Deleted)},
+                );
+            } else {
+                this.farmInternalApi.log('pruning complete, dangling images not found');
+            }
+        } catch (error) {
+            this.farmInternalApi.logError(
+                'unexpected error on attempt to prune dangling images',
+                error,
+            );
+        }
     }
 
     protected async checkHealth(hash: string, signal: AbortSignal): Promise<boolean> {
