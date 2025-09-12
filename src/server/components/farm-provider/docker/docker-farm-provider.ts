@@ -101,11 +101,15 @@ export class DockerFarmProvider extends BaseFarmProvider {
 
     private scheduleMaintenance(): void {
         const logScheduleDateTime = () =>
-            this.farmInternalApi.log(`next maintenance scheduled on ${job.nextDate().toString()}`);
+            this.farmInternalApi.log(
+                `next maintenance scheduled on ${job.nextDate().toJSDate().toString()}`,
+            );
         const job = CronJob.from({
             cronTime: this.config.maintenanceCronTime,
             onTick: async () => {
-                this.farmInternalApi.log('maintenance started');
+                this.farmInternalApi.log(
+                    `maintenance was scheduled on ${job.lastExecution?.toString()} and started at ${new Date().toString()}`,
+                );
 
                 await this.pruneDanglingImages();
                 logScheduleDateTime();
