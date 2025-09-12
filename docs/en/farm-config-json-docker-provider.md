@@ -33,6 +33,11 @@
 - Cache mounts (RUN --mount=type=cache)
 - Other advanced BuildKit features
 
+### `maintenanceCronTime`
+- *String*
+- *Optional*
+> Cron expression for maintenance scheduling. Default is `0 3 * * *` (every day at 3 a.m.)
+
 ## App prepare
 
 Make `.Dockerfile` for app to deploy in Farm and specify in `farm.json`.
