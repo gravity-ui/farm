@@ -111,3 +111,16 @@ export const generateRandomString = (length: number): string => {
     }
     return result;
 };
+
+const BLOCKING_TAINTS = ['NoSchedule', 'NoExecute'];
+
+export const isNodeActive = (node: k8s.V1Node): boolean => {
+    const readyCondition = node.status?.conditions?.find((condition) => condition.type === 'Ready');
+
+    const isReady = readyCondition?.status === 'True';
+    const isSchedulable = !node.spec?.unschedulable;
+    const hasBlockingTaints =
+        node.spec?.taints?.some((taint) => BLOCKING_TAINTS.includes(taint.effect)) ?? false;
+
+    return isReady && isSchedulable && !hasBlockingTaints;
+};
