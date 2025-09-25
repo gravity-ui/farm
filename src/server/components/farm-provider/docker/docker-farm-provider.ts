@@ -167,7 +167,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
 
         const {dockerInstanceHealthcheck = this.config.instanceHealthcheck} = instanceConfig;
 
-        if (process.env.APP_DEV_MODE) {
+        if (process.env.APP_DEV_MODE || process.env.FARM_DEPLOYMENT_MODE === 'vm') {
             const instanceHost = new URL(
                 generateInstanceHref({
                     project: instance.project,

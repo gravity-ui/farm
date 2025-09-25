@@ -1,3 +1,4 @@
+node_modules/
 lib-cov
 *.seed
 *.log
@@ -8,25 +9,19 @@ lib-cov
 *.gz
 *.sock
 *.db
-*.DS_Store
 
 npm-debug.log
 
 .idea/
+.DS_Store
 .env
 .vscode
 
 node_modules
-.swc
 
-nginx/nginx-api.conf
-nginx/nginx-preview.conf
-
+src/server/public/build/
 dist/server
 dist/shared
-dist/ui
+dist/run
 dist/public/build
-
 src/server/configs/env/dev.ts
-
-test-*-app/farm-config.js*

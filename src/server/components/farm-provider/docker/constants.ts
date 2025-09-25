@@ -10,5 +10,5 @@ export enum DockerContainerState {
 
 export const FARM_DOCKER_ENTITY_PREFIX = 'farm-docker-';
 
-export const DOCKER_PROXY_HOST = '127.0.0.1';
+export const DOCKER_PROXY_HOST = process.env.DOCKER_PROXY_HOST || '127.0.0.1';
 export const DOCKER_PROXY_PORT = Number(process.env.DOCKER_PROXY_PORT) || 3004;

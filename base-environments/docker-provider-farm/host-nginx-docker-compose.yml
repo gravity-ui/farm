@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx-server
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./host-nginx-farm.conf:/etc/nginx/conf.d/farm.conf:ro
+      - ./cert.pem:/etc/ssl/cert.pem
+      - ./key.pem:/etc/ssl/key.pem

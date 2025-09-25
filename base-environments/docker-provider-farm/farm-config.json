@@ -1,0 +1,24 @@
+{
+  "defaultProject": "docker-app",
+  "defaultBranch": "main",
+  "maxConcurrentBuilds": 1,
+  "urlTemplate": "https://{hash}.your-farm.host",
+  "projects": {
+    "docker-app": {
+      "repositoryPath": "gravity-ui/farm",
+      "monoRepoPath": "test-docker-app",
+      "defaultBranch": "main",
+      "vcs": "git",
+      "dockerInstanceHealthcheck": {
+        "port": 80,
+        "path": "/"
+      }
+    }
+  },
+  "farmProvider": {
+    "name": "docker",
+    "config": {
+      "network": "farm"
+    }
+  }
+}

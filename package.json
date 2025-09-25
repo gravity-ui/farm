@@ -1,6 +1,6 @@
 {
   "name": "@gravity-ui/farm",
-  "version": "0.0.1",
+  "version": "0.0.1-rc2025-08-15-18-00",
   "description": "PR preview generator",
   "homepage": "https://gravity-ui.com",
   "bugs": {
@@ -13,9 +13,10 @@
   "license": "MIT",
   "main": "src/server/index.js",
   "scripts": {
-    "circular-deps": "npm-run-all --parallel circular-deps:*",
+    "build": "app-builder build",
     "circular-deps:server": "madge --circular src/server",
     "circular-deps:ui": "madge --circular src/ui",
+    "circular-deps": "npm-run-all --parallel circular-deps:*",
     "db:migrate:down": "npm run build && knex migrate:down",
     "db:migrate:latest": "npm run build && knex migrate:latest",
     "db:migrate:make": "KNEX_MIGRATE_MODE=make knex migrate:make",
@@ -23,17 +24,17 @@
     "db:migrate:up": "npm run build && knex migrate:up",
     "deps": "ADBLOCK=true npm i --no-save --no-audit --prefer-offline",
     "dev": "NODE_OPTIONS=\"--max-old-space-size=8192 \" APP_DEV_MODE=1 app-builder dev",
-    "build": "app-builder build",
-    "lint": "npm-run-all --parallel lint:*",
+    "docker:build:docker-provider": "docker buildx build . -f docker-provider.Dockerfile --tag gravity-ui/farm:${npm_package_version}-docker-provider",
     "lint:js": "eslint src/ --quiet",
     "lint:prettier": "prettier --check '{src,tests}/**/*.{js,jsx,ts,tsx,css,scss}'",
     "lint:styles": "stylelint 'src/{ui,core/src/ui}/**/*.{css,scss}'",
-    "prepare": "husky",
+    "lint": "npm-run-all --parallel lint:*",
     "prepare:dev-config": "ts-node ./scripts/prepare-dev-configs.ts",
+    "prepare": "husky",
     "start": "NODE_ENV=production node dist/server",
-    "typecheck": "npm-run-all --parallel typecheck:*",
     "typecheck:server": "NODE_OPTIONS=\"--max-old-space-size=1024\" tsc -p src/server --noEmit",
-    "typecheck:ui": "NODE_OPTIONS=\"--max-old-space-size=2048\" tsc -p src/ui --noEmit"
+    "typecheck:ui": "NODE_OPTIONS=\"--max-old-space-size=2048\" tsc -p src/ui --noEmit",
+    "typecheck": "npm-run-all --parallel typecheck:*"
   },
   "nano-staged": {
     "*.{css,scss}": [
