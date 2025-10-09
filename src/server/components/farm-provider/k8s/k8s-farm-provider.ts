@@ -421,6 +421,23 @@ export class K8sFarmProvider extends BaseFarmProvider {
             .map(([key, value]) => `--build-arg ${key}='${value.replace(/'/g, "\\'")}'`)
             .join(' ');
 
+        let buildSecretEnvVariableKeys: string[] = [];
+
+        if (builderEnvSecretName !== null) {
+            const {body: secret} = await this.k8sApi.readNamespacedSecret(
+                builderEnvSecretName,
+                namespace,
+            );
+
+            if (secret.data) {
+                buildSecretEnvVariableKeys = Object.keys(secret.data);
+            }
+        }
+
+        const buildSecrets = buildSecretEnvVariableKeys
+            .map((key) => `--secret id=${key},env=${key}`)
+            .join(' ');
+
         const vcs = getVcs(generateData.vcs);
 
         const builderPodSpec = this.getBuilderPodSpec({
@@ -431,7 +448,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             envVariables: buildEnvVariables,
             commands: [
                 ...vcs.getK8sCheckoutCommands(generateData),
-                `docker build . -f '${dockerfilePath}' -t ${targetImage} --network host ${buildArgs}`,
+                `docker build . -f '${dockerfilePath}' -t ${targetImage} --network host ${buildArgs} ${buildSecrets}`,
                 `docker push ${targetImage}`,
             ],
         });
