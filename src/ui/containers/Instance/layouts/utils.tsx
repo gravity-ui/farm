@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 
 import {useDataManager} from '@gravity-ui/data-source';
 import {House} from '@gravity-ui/icons';
-import {matchPath} from 'react-router-dom';
+import {matchPath, useSearchParams} from 'react-router-dom';
 
 import type {InstanceWithProviderStatus} from '../../../../shared/common';
 import {uiRoutes} from '../../../../shared/uiRoutes';
@@ -14,14 +14,57 @@ import {useInstanceActions} from '../actions';
 import {i18n} from './i18n';
 
 const toastName = 'stop-instance-alert';
+const autoStartToastName = 'auto-start-instance-alert';
+
+const showErrorToast = (err: Error) => {
+    toaster.add({
+        name: 'error-toast-start-instance',
+        title: i18nInstanceActions('start-instance-error'),
+        content: err.message,
+        theme: 'danger',
+    });
+};
 
 export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) => {
     const {startInstance} = useInstanceActions();
+    const [searchParams] = useSearchParams();
     const dataManager = useDataManager();
     const [isToastVisible, setIsToastVisible] = useState(false);
+    const retpath = searchParams.get('retpath') ?? '';
+    const autoStartEnable = Boolean(retpath);
 
     useEffect(() => {
-        if (instance?.providerStatus === 'stopped' && !isToastVisible && !toaster.has(toastName)) {
+        if (instance?.providerStatus === 'running' && autoStartEnable) {
+            window.location.href = retpath;
+        }
+
+        if (
+            instance?.providerStatus === 'stopped' &&
+            !isToastVisible &&
+            !toaster.has(autoStartToastName) &&
+            autoStartEnable
+        ) {
+            setIsToastVisible(true); // so that the toast is not recreated with every render
+
+            startInstance(instance)
+                .then(() => {
+                    toaster.add({
+                        name: autoStartToastName,
+                        title: i18nInstanceActions('starting'),
+                        content: i18nInstanceActions('auto-start-instance-description'),
+                        theme: 'info',
+                        autoHiding: 4000,
+                    });
+                })
+                .catch((err) => showErrorToast(err));
+        }
+
+        if (
+            instance?.providerStatus === 'stopped' &&
+            !isToastVisible &&
+            !toaster.has(toastName) &&
+            !autoStartEnable
+        ) {
             setIsToastVisible(true); // so that the toast is not recreated with every render
 
             toaster.add({
@@ -33,11 +76,13 @@ export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) =>
                     {
                         label: i18nInstanceActions('start'),
                         onClick: () => {
-                            startInstance(instance).then(() => {
-                                setTimeout(() => {
-                                    setIsToastVisible(false);
-                                }, 1000);
-                            });
+                            startInstance(instance)
+                                .then(() => {
+                                    setTimeout(() => {
+                                        setIsToastVisible(false);
+                                    }, 1000);
+                                })
+                                .catch((err) => showErrorToast(err));
                         },
                     },
                 ],
@@ -47,8 +92,9 @@ export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) =>
         if (instance?.providerStatus !== 'stopped') {
             setIsToastVisible(false);
             toaster.remove(toastName);
+            toaster.remove(autoStartToastName);
         }
-    }, [instance, dataManager, isToastVisible, startInstance]);
+    }, [instance, dataManager, isToastVisible, startInstance, autoStartEnable, retpath]);
 
     useEffect(() => {
         return () => {
