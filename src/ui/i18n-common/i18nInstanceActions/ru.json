@@ -17,5 +17,6 @@
   "rebuild-confirm": "Вы действительно хотите пересобрать инстанс?",
   "stop-warning-title": "Инстанс остановлен",
   "stop-warning-description": "Чтобы перейти к инстансу, сначала его нужно запустить",
-  "auto-start-instance-description": "После запуска инстанс автоматически откроется"
+  "auto-start-instance-description": "После запуска инстанс автоматически откроется",
+  "start-instance-error": "Ошибка запуска инстанса"
 }

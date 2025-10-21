@@ -17,5 +17,6 @@
   "rebuild-confirm": "Are you sure you want to rebuild the instance?",
   "stop-warning-title": "Instance is stopped",
   "stop-warning-description": "To go to the instance, you need to start it",
-  "auto-start-instance-description": "Once launched, the instance will open automatically."
+  "auto-start-instance-description": "Once launched, the instance will open automatically.",
+  "start-instance-error": "Instance start error"
 }

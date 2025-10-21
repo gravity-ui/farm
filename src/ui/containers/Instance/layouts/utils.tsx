@@ -16,6 +16,15 @@ import {i18n} from './i18n';
 const toastName = 'stop-instance-alert';
 const autoStartToastName = 'auto-start-instance-alert';
 
+const showErrorToast = (err: Error) => {
+    toaster.add({
+        name: 'error-toast-start-instance',
+        title: i18nInstanceActions('start-instance-error'),
+        content: err.message,
+        theme: 'danger',
+    });
+};
+
 export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) => {
     const {startInstance} = useInstanceActions();
     const [searchParams] = useSearchParams();
@@ -26,7 +35,7 @@ export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) =>
 
     useEffect(() => {
         if (instance?.providerStatus === 'running' && autoStartEnable) {
-            window.open(retpath, '_blank')?.focus();
+            window.location.href = retpath;
         }
 
         if (
@@ -37,15 +46,17 @@ export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) =>
         ) {
             setIsToastVisible(true); // so that the toast is not recreated with every render
 
-            startInstance(instance).then(() => {
-                toaster.add({
-                    name: autoStartToastName,
-                    title: i18nInstanceActions('starting'),
-                    content: i18nInstanceActions('auto-start-instance-description'),
-                    theme: 'info',
-                    autoHiding: 4000,
-                });
-            });
+            startInstance(instance)
+                .then(() => {
+                    toaster.add({
+                        name: autoStartToastName,
+                        title: i18nInstanceActions('starting'),
+                        content: i18nInstanceActions('auto-start-instance-description'),
+                        theme: 'info',
+                        autoHiding: 4000,
+                    });
+                })
+                .catch((err) => showErrorToast(err));
         }
 
         if (
@@ -65,11 +76,13 @@ export const useInstanceStopWarning = (instance?: InstanceWithProviderStatus) =>
                     {
                         label: i18nInstanceActions('start'),
                         onClick: () => {
-                            startInstance(instance).then(() => {
-                                setTimeout(() => {
-                                    setIsToastVisible(false);
-                                }, 1000);
-                            });
+                            startInstance(instance)
+                                .then(() => {
+                                    setTimeout(() => {
+                                        setIsToastVisible(false);
+                                    }, 1000);
+                                })
+                                .catch((err) => showErrorToast(err));
                         },
                     },
                 ],
