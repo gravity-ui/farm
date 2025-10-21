@@ -9,11 +9,12 @@ interface PageProps {
     children: React.ReactNode;
     header?: string | React.ReactNode;
     className?: string;
+    id?: string;
 }
 
-export const Page = ({children, header, className}: PageProps) => {
+export const Page = ({children, header, className, id}: PageProps) => {
     return (
-        <Flex direction="column" gap={4} className={classNames(styles.page, className)}>
+        <Flex direction="column" gap={4} className={classNames(styles.page, className)} id={id}>
             {header && <Text variant="header-1">{header}</Text>}
             {children}
         </Flex>
