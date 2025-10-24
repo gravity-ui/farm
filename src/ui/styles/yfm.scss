@@ -17,6 +17,10 @@
         @include link;
     }
 
+    p {
+        margin: 0;
+    }
+
     b,
     strong {
         @include text-accent;
