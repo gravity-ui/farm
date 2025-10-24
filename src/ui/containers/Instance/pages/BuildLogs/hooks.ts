@@ -11,7 +11,7 @@ export const useAutoscrollingBehavior = (
     const [isScrollTopButtonVisible, setIsScrollTopButtonVisible] = React.useState(false);
     const [shouldAutoscroll, setShouldAutoscroll] = React.useState(true);
 
-    // Автоскролл к концу логов при появлении новых
+    // Auto-scroll to the end of logs when new ones appear
     React.useEffect(() => {
         if (logsBottomRef.current && shouldAutoscroll) {
             logsBottomRef.current.scrollIntoView({behavior: 'auto', block: 'center'});
@@ -25,10 +25,10 @@ export const useAutoscrollingBehavior = (
         const handleScroll = () => {
             const {scrollTop, scrollHeight, clientHeight} = page;
             const logsPageHeight = scrollHeight - clientHeight;
-            // проверяем, находится ли пользователь в самом низу страницы с погрешностью SCROLL_BOTTOM_TOLERANCE
+            // check if user is at the bottom of the page with SCROLL_BOTTOM_TOLERANCE tolerance
             const isAtBottom = logsPageHeight - scrollTop < SCROLL_BOTTOM_TOLERANCE;
 
-            // отображать кнопку возврата к началу страницы если пользователь не в самом начале страницы
+            // show scroll to top button if user is not at the very beginning of the page
             setIsScrollTopButtonVisible(scrollTop > SCROLL_TO_TOP_THRESHOLD);
             setShouldAutoscroll(isAtBottom);
         };
