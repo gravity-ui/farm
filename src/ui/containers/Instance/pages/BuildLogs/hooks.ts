@@ -6,7 +6,7 @@ import {BUILD_LOGS_PAGE_ID, SCROLL_BOTTOM_TOLERANCE, SCROLL_TO_TOP_THRESHOLD} fr
 
 export const useAutoscrollingBehavior = (
     listLogs: ListLogsResponse | undefined,
-    logsBottomRef: React.RefObject<HTMLAnchorElement | HTMLDivElement>,
+    logsBottomRef: React.RefObject<HTMLDivElement>,
 ) => {
     const [isScrollTopButtonVisible, setIsScrollTopButtonVisible] = React.useState(false);
     const [shouldAutoscroll, setShouldAutoscroll] = React.useState(true);

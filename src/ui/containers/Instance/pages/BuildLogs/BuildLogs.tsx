@@ -45,13 +45,12 @@ interface LogsContentProps {
 
 const LogsContent = ({instance, listLogs}: LogsContentProps) => {
     const logsContainerRef = React.useRef<HTMLDivElement>(null);
-    const LogsBottomRef = React.useRef<HTMLAnchorElement | HTMLDivElement>(null);
+    const LogsBottomRef = React.useRef<HTMLDivElement>(null);
 
     const {isScrollTopButtonVisible} = useAutoscrollingBehavior(listLogs, LogsBottomRef);
 
     const renderLog = (item: Output, index: number) => {
         const {command, duration, stdout, stderr} = item;
-        const isLastLog = index === (listLogs?.logs?.length || 0) - 1;
 
         return (
             <React.Fragment key={`log-${index}`}>
@@ -89,7 +88,6 @@ const LogsContent = ({instance, listLogs}: LogsContentProps) => {
                         <hr />
                     </div>
                 )}
-                {isLastLog && <div ref={LogsBottomRef as React.RefObject<HTMLDivElement>} />}
             </React.Fragment>
         );
     };
@@ -115,11 +113,7 @@ const LogsContent = ({instance, listLogs}: LogsContentProps) => {
         });
 
         return (
-            <a
-                ref={LogsBottomRef as React.RefObject<HTMLAnchorElement>}
-                className={styles.instanceLink}
-                href={href}
-            >
+            <a className={styles.instanceLink} href={href}>
                 {i18nInstance('go-to-instance')}
             </a>
         );
@@ -157,6 +151,7 @@ const LogsContent = ({instance, listLogs}: LogsContentProps) => {
             {listLogs?.logs?.map(renderLog)}
             {renderInstanceLink()}
             {renderScrollToTopButton()}
+            <div ref={LogsBottomRef} />
         </div>
     );
 };
