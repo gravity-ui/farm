@@ -1,7 +1,8 @@
 import React from 'react';
 
 import {idle, useQueryData} from '@gravity-ui/data-source';
-import {Flex, Text, sp} from '@gravity-ui/uikit';
+import {ArrowUp} from '@gravity-ui/icons';
+import {Button, Flex, Icon, Text, Tooltip, sp} from '@gravity-ui/uikit';
 import {useParams} from 'react-router-dom';
 
 import type {ListLogsResponse} from '../../../../../shared/api/listLogs';
@@ -14,6 +15,8 @@ import {i18nInstance} from '../../../../i18n-common/i18nInstance';
 import {generateInstanceHref} from '../../../../utils/common';
 import {InstanceLayout} from '../../layouts/InstanceLayout';
 
+import {BUILD_LOGS_PAGE_ID} from './constants';
+import {useAutoscrollingBehavior} from './hooks';
 import {i18n} from './i18n';
 
 import * as styles from './BuildLogs.module.scss';
@@ -41,6 +44,11 @@ interface LogsContentProps {
 }
 
 const LogsContent = ({instance, listLogs}: LogsContentProps) => {
+    const logsContainerRef = React.useRef<HTMLDivElement>(null);
+    const LogsBottomRef = React.useRef<HTMLDivElement>(null);
+
+    const {isScrollTopButtonVisible} = useAutoscrollingBehavior(listLogs, LogsBottomRef);
+
     const renderLog = (item: Output, index: number) => {
         const {command, duration, stdout, stderr} = item;
 
@@ -111,10 +119,39 @@ const LogsContent = ({instance, listLogs}: LogsContentProps) => {
         );
     };
 
+    const renderScrollToTopButton = () => {
+        const handleScrollToTop = () => {
+            logsContainerRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        };
+
+        if (!isScrollTopButtonVisible) {
+            return null;
+        }
+
+        return (
+            <Tooltip content={i18n('return-to-start-of-logs')} placement="left" openDelay={0}>
+                <Button
+                    view="raised"
+                    pin="circle-circle"
+                    size="xl"
+                    className={styles.scrollToUpButton}
+                    onClick={handleScrollToTop}
+                >
+                    <Icon data={ArrowUp} size={24} />
+                </Button>
+            </Tooltip>
+        );
+    };
+
     return (
-        <div>
+        <div ref={logsContainerRef} id="logs">
             {listLogs?.logs?.map(renderLog)}
             {renderInstanceLink()}
+            {renderScrollToTopButton()}
+            <div ref={LogsBottomRef} />
         </div>
     );
 };
@@ -135,6 +172,7 @@ export const InstanceBuildLogsPage = () => {
                     listLogs: listLogsQuery.data,
                 })}
                 className={styles.buildLogs}
+                id={BUILD_LOGS_PAGE_ID}
             >
                 <DataLoader
                     status={instanceQuery.status}

@@ -1,4 +1,5 @@
 {
   "title": "Логи сборки",
-  "command-finished": "Команда завершена за {{duration}}с"
+  "command-finished": "Команда завершена за {{duration}}с",
+  "return-to-start-of-logs": "Вернуться к началу логов"
 }

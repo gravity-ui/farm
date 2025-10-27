@@ -19,3 +19,10 @@
 .output {
     margin: 0;
 }
+
+.scrollToUpButton {
+    position: fixed;
+    bottom: 60px;
+    right: var(--g-spacing-4);
+    color: var(--g-color-text-misc);
+}
