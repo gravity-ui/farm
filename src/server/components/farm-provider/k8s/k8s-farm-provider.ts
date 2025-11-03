@@ -350,22 +350,22 @@ export class K8sFarmProvider extends BaseFarmProvider {
 
     async getInstances(): Promise<InstanceProviderInfo[]> {
         const deployments = await this.listDeployments(FARM_LABELS);
+        const pods = await this.listPods({...FARM_LABELS, type: 'instance'});
+        const podsMap = new Map(pods.map((pod) => [pod.metadata?.labels?.hash, pod]));
 
-        return Promise.all(
-            deployments.map<Promise<InstanceProviderInfo>>(async (deployment) => {
-                const hash = this.getInstanceHash(deployment);
-                const [pod] = await this.listDeploymentPods(deployment);
+        return deployments.map<InstanceProviderInfo>((deployment) => {
+            const hash = this.getInstanceHash(deployment);
+            const pod = podsMap.get(hash);
 
-                return {
-                    hash,
-                    // If pod is not found, it means that instance is stopped
-                    status: pod
-                        ? mapToFarmStatus(getContainerStatus(pod, INSTANCE_CONTAINER_NAME))
-                        : 'stopped',
-                    startTime: pod ? getPodStartTime(pod) : 0,
-                };
-            }),
-        );
+            return {
+                hash,
+                // If pod is not found, it means that instance is stopped
+                status: pod
+                    ? mapToFarmStatus(getContainerStatus(pod, INSTANCE_CONTAINER_NAME))
+                    : 'stopped',
+                startTime: pod ? getPodStartTime(pod) : 0,
+            };
+        });
     }
 
     async getInstanceLogs(params: {
