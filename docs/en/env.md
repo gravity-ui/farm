@@ -12,9 +12,38 @@ This document describes all environment variables used in the Farm project.
 - **Purpose**: Application working directory
 - **Default**: `/farm`
 
+## Database Variables
+
+### FARM_DB_TYPE
+- **Purpose**: Database type
+- **Values**: `sqlite` or `postgres`
+- **Default**: `sqlite`
+
 ### FARM_DB_FILE_PATH
-- **Purpose**: Path to the SQLite database file
+- **Purpose**: Path to the SQLite database file (used only when `FARM_DB_TYPE=sqlite`)
 - **Default**: `farm.db` in the project root directory
+
+### FARM_DB_HOST
+- **Purpose**: PostgreSQL server host (used only when `FARM_DB_TYPE=postgres`)
+- **Default**: `localhost`
+
+### FARM_DB_PORT
+- **Purpose**: PostgreSQL server port (used only when `FARM_DB_TYPE=postgres`)
+- **Default**: `5432`
+
+### FARM_DB_USER
+- **Purpose**: PostgreSQL username (used only when `FARM_DB_TYPE=postgres`)
+- **Default**: `postgres`
+
+### FARM_DB_PASSWORD
+- **Purpose**: PostgreSQL user password (used only when `FARM_DB_TYPE=postgres`)
+- **Default**: `postgres`
+
+### FARM_DB_NAME
+- **Purpose**: PostgreSQL database name (used only when `FARM_DB_TYPE=postgres`)
+- **Default**: `farm`
+
+## Configuration
 
 ### FARM_ENV_PATH
 - **Purpose**: Path to the external configuration file
