@@ -66,6 +66,7 @@
     "object-hash": "^2.2.0",
     "observable-fns": "^0.6.1",
     "path-browserify": "^1.0.1",
+    "pg": "^8.16.3",
     "shelljs": "^0.8.5",
     "sqlite3": "^5.1.6",
     "threads": "^1.7.0",
