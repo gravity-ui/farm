@@ -138,3 +138,15 @@ export function generateApiLink(apiPath: string, hash: string) {
         hash,
     })}`;
 }
+
+export const generateVariablesObjectWithPrefix = <T extends Record<string, unknown>>(
+    obj: T | undefined,
+    prefix: string,
+): Record<string, unknown> => {
+    if (!obj) {
+        return {};
+    }
+    return Object.fromEntries(
+        Object.entries(obj).map(([key, value]) => [`${prefix}${key}`, value]),
+    );
+};

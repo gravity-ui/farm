@@ -1,3 +1,6 @@
 {
-  "title": "Создание инстанса"
+  "create-title": "Создание инстанса",
+  "clone-title": "Клонирование инстанса",
+  "success-delete-original-instance-title": "Старый инстанс удален",
+  "success-delete-original-instance-description": "Старый инстанс {{hash}} успешно удален"
 }

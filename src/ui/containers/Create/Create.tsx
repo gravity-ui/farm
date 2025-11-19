@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React from 'react';
 
 import type {AxiosError} from 'axios';
 import arrayMutators from 'final-form-arrays';
@@ -21,15 +21,36 @@ import {DEFAULT_PROJECT} from '../../utils/constants';
 import {prepareGenerateInstanceRequest} from '../../utils/prepareGenerateInstanceRequest';
 
 import {CreateFormContent} from './CreateFormContent/CreateFormContent';
+import DeleteOriginalInstanceModal from './DeleteOriginalInstanceModal/DeleteOriginalInstanceModal';
 import {i18n} from './i18n';
 import type {FormValue, QSVariables} from './types';
 import {validate} from './validate';
+import { useInstanceActions } from '../Instance/actions';
+import { Instance } from '../../../shared/common';
 
 export const Create = () => {
+    const [openDeleteOriginalInstanceModal, setOpenDeleteOriginalInstanceModal] = React.useState(false);
+    const [pendingFormValues, setPendingFormValues] = React.useState<FormValue | null>(null);
+
     const location = useLocation();
     const navigate = useNavigate();
 
-    const handleSubmit = useCallback(
+    const {deleteInstance} = useInstanceActions();
+
+    const cloneHash = React.useMemo(() => {
+        const params = new URLSearchParams(location.search);
+        return params.get('cloneHash');
+    }, [location.search]);
+
+    const handleCloneSubmit = React.useCallback(
+        async (fv: FormValue) => {
+            setPendingFormValues(fv);
+            setOpenDeleteOriginalInstanceModal(true);
+        },
+        [],
+    );
+
+    const handleSubmit = React.useCallback(
         async (fv: FormValue) => {
             let urlTemplate = fv.urlTemplate;
             if (fv.instanceConfigName && !urlTemplate) {
@@ -112,7 +133,7 @@ export const Create = () => {
         [navigate],
     );
 
-    const [initialValues] = React.useState<FormValue>(() => {
+    const initialValues = React.useMemo<FormValue>(() => {
         const params = new URLSearchParams(location.search);
         const project = params.get('project') || window.FM.defaultProject || DEFAULT_PROJECT;
         const projectFarmConfig = getProjectFarmConfig(project);
@@ -125,27 +146,12 @@ export const Create = () => {
                 projectFarmConfig.defaultBranch ||
                 window.FM.defaultBranch ||
                 'main',
-            description: '',
-            urlTemplate: '',
-            instanceConfigName: '',
-            variables: [
-                {
-                    key: '',
-                    value: '',
-                },
-            ] as QSVariables[],
-            runVariables: [
-                {
-                    key: '',
-                    value: '',
-                },
-            ] as QSVariables[],
-            labels: [
-                {
-                    key: '',
-                    value: '',
-                },
-            ] as QSVariables[],
+            description: params.get('description') ?? '',
+            urlTemplate: params.get('urlTemplate') ?? '',
+            instanceConfigName: params.get('instanceConfigName') ?? '',
+            variables: [] as QSVariables[],
+            runVariables: [] as QSVariables[],
+            labels: [] as QSVariables[],
         };
 
         if (!location.search) {
@@ -170,21 +176,52 @@ export const Create = () => {
             }
         }
 
+        const defaultEmptyVariables = [
+            {
+                key: '',
+                value: '',
+            },
+        ] as QSVariables[]
+
         return {
             ...values,
-            description: params.get('description') ?? values.description,
+            variables: values.variables.length ? values.variables : defaultEmptyVariables,
+            runVariables: values.runVariables.length ? values.runVariables : defaultEmptyVariables,
+            labels: values.labels.length ? values.labels : defaultEmptyVariables,
         };
-    });
+    }, [location.search]);
 
     const [mutators] = React.useState(() => ({
         ...arrayMutators,
     }));
 
+    const handleModalSave = React.useCallback(async (isDeleteOriginalInstance: boolean) => {
+        if (pendingFormValues) {
+            if (isDeleteOriginalInstance) {
+                try {
+                    await deleteInstance({hash: cloneHash} as Instance, false);
+                } catch (e) {
+                    handleRequestErrorWithToast(e as AxiosError<{message: string}>);
+                }
+            }
+
+            setOpenDeleteOriginalInstanceModal(false);
+            await handleSubmit(pendingFormValues);
+            setPendingFormValues(null);
+        }
+    }, [pendingFormValues, handleSubmit]);
+
     return (
-        <Page header={i18n('title')}>
+        <Page header={cloneHash ? i18n('clone-title') : i18n('create-title')}>
+            <DeleteOriginalInstanceModal
+                open={openDeleteOriginalInstanceModal}
+                setOpen={setOpenDeleteOriginalInstanceModal}
+                onSubmit={handleModalSave}
+                cloneInstanceHash={cloneHash}
+            />
             <Form
                 initialValues={initialValues}
-                onSubmit={handleSubmit}
+                onSubmit={cloneHash ? handleCloneSubmit : handleSubmit}
                 mutators={mutators}
                 validate={validate}
                 render={(props) => <CreateFormContent {...props} />}

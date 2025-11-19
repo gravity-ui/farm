@@ -7,6 +7,7 @@ import {
     Play,
     Stop,
     TrashBin,
+    CopyPlus,
 } from '@gravity-ui/icons';
 
 export const InstanceIconsMap = {
@@ -15,6 +16,7 @@ export const InstanceIconsMap = {
     RunInstance: Play,
     RestartInstance: ArrowRotateLeft,
     RebuildInstance: ArrowsRotateLeft,
+    CloneInstance: CopyPlus,
     ViewInstanceLogs: ListCheck,
     ViewBuildLogs: FileCode,
     DeleteInstance: TrashBin,

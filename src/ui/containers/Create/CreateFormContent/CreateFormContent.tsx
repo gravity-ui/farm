@@ -122,11 +122,12 @@ export const CreateFormContent = ({
     }, [instanceConfigsQuery.error]);
 
     React.useEffect(() => {
-        let name = '';
+        let name = instanceConfigName;
+
         if (instanceConfigsQuery.data?.length) {
-            name = instanceConfigsQuery.data?.includes(instanceConfigName)
-                ? instanceConfigName
-                : instanceConfigsQuery.data[0];
+            if (!instanceConfigsQuery.data?.includes(instanceConfigName)) {
+                name = instanceConfigsQuery.data[0];
+            }
         }
 
         formApi.change('instanceConfigName', name);

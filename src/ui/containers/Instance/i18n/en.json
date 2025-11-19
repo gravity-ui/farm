@@ -8,6 +8,7 @@
   "stop": "Stop",
   "restart": "Restart",
   "rebuild": "Rebuild",
+  "clone": "Clone",
   "delete": "Delete",
   "delete-confirm": "Are you sure you want to delete the instance?",
   "open-instance": "Open instance",
