@@ -1,6 +1,9 @@
 import path from 'path';
 
 import type * as k8s from '@kubernetes/client-node';
+import bytes from 'bytes';
+import {LRUCache} from 'lru-cache';
+import ms from 'ms';
 
 import {coreRegistry} from '../components/core-plugin-registry';
 import type {DockerInstanceHealthcheck} from '../components/farm-provider/docker/types';
@@ -23,6 +26,7 @@ export interface FarmJsonConfig {
     urlTemplate?: string;
     env?: Record<string, string>;
     runEnv?: Record<string, string>;
+    protectedEnv?: string[];
     start?: FarmFileStartConfig;
 
     // docker and other extensions of core
@@ -55,6 +59,10 @@ export interface FarmProjectConfigSection extends Omit<FarmJsonConfig, 'name'> {
 export interface FarmProjectConfig {
     'preview-generator'?: FarmProjectConfigSection;
 }
+
+type FormattedProjectFarmJsonConfig<T = FarmJsonConfig, U = {preview: T[]}> = ReturnType<
+    typeof formatProjectConfig<T, U>
+>;
 
 function formatProjectConfig<T = FarmJsonConfig, U = {preview: T[]}>(config: FarmProjectConfig): U {
     return {
@@ -134,14 +142,30 @@ export interface FetchProjectConfigParams {
     branch: string;
 }
 
+/**
+ * Cache to avoid reloading data within one or more close-in-time requests.
+ */
+const configCache = new LRUCache<string, string>({
+    maxSize: bytes('100mb') ?? 0,
+    sizeCalculation: (value) => Buffer.from(value, 'utf-8').byteLength,
+    ttl: ms('10s'),
+});
+
 export async function fetchProjectConfig(params: FetchProjectConfigParams) {
+    const cacheKey = `${params.project}_${params.branch}`;
+    const cache = configCache.get(cacheKey);
+    if (cache) {
+        return JSON.parse(cache) as FormattedProjectFarmJsonConfig;
+    }
     const vcs = getVcs(params.vcs);
     if (!vcs) {
         throw new Error(`Failed to fetch project config. Unknown vcs: ${params.vcs}`);
     }
 
     const {project, branch} = params;
-    return formatProjectConfig(await vcs.getProjectConfig({project, branch}));
+    const result = formatProjectConfig(await vcs.getProjectConfig({project, branch}));
+    configCache.set(cacheKey, JSON.stringify(result));
+    return result;
 }
 
 export async function readConfigFile(instancePath: string) {
