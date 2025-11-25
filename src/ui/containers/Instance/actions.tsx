@@ -3,6 +3,7 @@ import React, {useCallback} from 'react';
 import {useDataManager} from '@gravity-ui/data-source';
 import {Icon} from '@gravity-ui/uikit';
 import type {AxiosError} from 'axios';
+import {generatePath, useNavigate} from 'react-router-dom';
 
 import type {
     DeleteInstanceRequest,
@@ -20,7 +21,7 @@ import type {
 import type {StartInstanceRequest, StartInstanceResponse} from '../../../shared/api/startInstance';
 import type {StopInstanceRequest, StopInstanceResponse} from '../../../shared/api/stopInstance';
 import type {Instance, InstanceWithProviderStatus} from '../../../shared/common';
-import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
+import {uiRoutes} from '../../../shared/uiRoutes';
 import {getInstanceSource, listInstancesSource} from '../../data-sources';
 import api from '../../services/api';
 import {handleRequestErrorWithToast, toaster} from '../../services/toaster';
@@ -30,18 +31,15 @@ import {
     getProjectFarmConfig,
     omitNullable,
     prepareEnvVariables,
+    prepareLabels,
     sleep,
-    generateVariablesObjectWithPrefix
 } from '../../utils/common';
 import {InstanceIconsMap} from '../../utils/iconsMap';
 import {prepareGenerateInstanceRequest} from '../../utils/prepareGenerateInstanceRequest';
-import {useNavigate, generatePath} from 'react-router-dom';
 
 import {i18n} from './i18n';
-import { uiRoutes } from '../../../shared/uiRoutes';
 
 export const waitForRunning = async (hash: string) => {
-    // eslint-disable-next-line no-constant-condition
     while (true) {
         try {
             const result = await api.request<
@@ -119,7 +117,7 @@ export const useInstanceActions = () => {
     };
 
     const deleteInstance = async (instance: Instance, showConfirm = true) => {
-        if (showConfirm &&!window.confirm(i18n('delete-confirm'))) {
+        if (showConfirm && !window.confirm(i18n('delete-confirm'))) {
             return;
         }
 
@@ -160,6 +158,9 @@ export const useInstanceActions = () => {
     const cloneInstance = async (instance: Instance) => {
         const pathname = generatePath(uiRoutes.instanceCreate);
 
+        const envVariables = prepareEnvVariables(instance.envVariables, instance.runEnvVariables);
+        const labels = prepareLabels(instance.labels);
+
         const search = generateSearchParams({
             project: instance.project,
             vcs: instance.vcs,
@@ -167,10 +168,9 @@ export const useInstanceActions = () => {
             description: instance.description,
             instanceConfigName: instance.instanceConfigName,
             urlTemplate: instance.urlTemplate,
-            ...generateVariablesObjectWithPrefix(instance.envVariables, ENV_PREFIX),
-            ...generateVariablesObjectWithPrefix(instance.runEnvVariables, RUN_ENV_PREFIX),
-            ...generateVariablesObjectWithPrefix(instance.labels, LABEL_PREFIX),
             cloneHash: instance.hash,
+            ...envVariables,
+            ...labels,
         });
 
         navigate(pathname + search);
@@ -181,7 +181,7 @@ export const useInstanceActions = () => {
         startInstance,
         deleteInstance,
         rebuildInstance,
-        cloneInstance
+        cloneInstance,
     };
 };
 
@@ -200,7 +200,8 @@ interface UseInstanceAvailableActionsProps {
 export const useInstanceAvailableActions = ({iconSize}: UseInstanceAvailableActionsProps = {}): ((
     instance: InstanceWithProviderStatus,
 ) => InstanceAvailableAction[]) => {
-    const {stopInstance, startInstance, deleteInstance, rebuildInstance, cloneInstance} = useInstanceActions();
+    const {stopInstance, startInstance, deleteInstance, rebuildInstance, cloneInstance} =
+        useInstanceActions();
 
     const getActions = useCallback(
         (instance: InstanceWithProviderStatus) => {
@@ -258,7 +259,7 @@ export const useInstanceAvailableActions = ({iconSize}: UseInstanceAvailableActi
 
             return actions;
         },
-        [iconSize, stopInstance, startInstance, rebuildInstance, deleteInstance],
+        [iconSize, stopInstance, startInstance, rebuildInstance, deleteInstance, cloneInstance],
     );
 
     return getActions;

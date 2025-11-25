@@ -9,7 +9,7 @@ import type {
     InstanceCommonStatus,
     ProjectFarmConfig,
 } from '../../shared/common';
-import {ENV_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
+import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 
 const envConfig = JSON.parse(window.FM.farmConfig) as FarmConfigBase;
 
@@ -97,6 +97,16 @@ export function prepareEnvVariables(
     return {...vars, ...runVars};
 }
 
+export function prepareLabels(labels: {[key: string]: string} = {}) {
+    return Object.keys(labels).reduce(
+        (acc, key) => {
+            acc[`${LABEL_PREFIX}${key}`] = labels[key];
+            return acc;
+        },
+        {} as {[key: string]: string},
+    );
+}
+
 export const getBuildStatusTheme = (status?: InstanceCommonStatus) => {
     switch (status) {
         case 'errored':
@@ -138,15 +148,3 @@ export function generateApiLink(apiPath: string, hash: string) {
         hash,
     })}`;
 }
-
-export const generateVariablesObjectWithPrefix = <T extends Record<string, unknown>>(
-    obj: T | undefined,
-    prefix: string,
-): Record<string, unknown> => {
-    if (!obj) {
-        return {};
-    }
-    return Object.fromEntries(
-        Object.entries(obj).map(([key, value]) => [`${prefix}${key}`, value]),
-    );
-};

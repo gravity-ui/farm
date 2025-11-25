@@ -2,12 +2,12 @@ import {
     ArrowRotateLeft,
     ArrowUpRightFromSquare,
     ArrowsRotateLeft,
+    CopyPlus,
     FileCode,
     ListCheck,
     Play,
     Stop,
     TrashBin,
-    CopyPlus,
 } from '@gravity-ui/icons';
 
 export const InstanceIconsMap = {

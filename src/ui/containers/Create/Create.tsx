@@ -11,6 +11,7 @@ import type {
     GetInstanceConfigRequest,
     GetInstanceConfigResponse,
 } from '../../../shared/api/getInstanceConfig';
+import type {Instance} from '../../../shared/common';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
 import {Page} from '../../components/layouts/Page/Page';
 import {ci18n} from '../../i18n-common/ci18n';
@@ -19,17 +20,17 @@ import {handleRequestErrorWithToast, toaster} from '../../services/toaster';
 import {getErrorMessageFromAxios, getProjectFarmConfig, omitNullable} from '../../utils/common';
 import {DEFAULT_PROJECT} from '../../utils/constants';
 import {prepareGenerateInstanceRequest} from '../../utils/prepareGenerateInstanceRequest';
+import {useInstanceActions} from '../Instance/actions';
 
 import {CreateFormContent} from './CreateFormContent/CreateFormContent';
 import DeleteOriginalInstanceModal from './DeleteOriginalInstanceModal/DeleteOriginalInstanceModal';
 import {i18n} from './i18n';
 import type {FormValue, QSVariables} from './types';
 import {validate} from './validate';
-import { useInstanceActions } from '../Instance/actions';
-import { Instance } from '../../../shared/common';
 
 export const Create = () => {
-    const [openDeleteOriginalInstanceModal, setOpenDeleteOriginalInstanceModal] = React.useState(false);
+    const [openDeleteOriginalInstanceModal, setOpenDeleteOriginalInstanceModal] =
+        React.useState(false);
     const [pendingFormValues, setPendingFormValues] = React.useState<FormValue | null>(null);
 
     const location = useLocation();
@@ -42,13 +43,10 @@ export const Create = () => {
         return params.get('cloneHash');
     }, [location.search]);
 
-    const handleCloneSubmit = React.useCallback(
-        async (fv: FormValue) => {
-            setPendingFormValues(fv);
-            setOpenDeleteOriginalInstanceModal(true);
-        },
-        [],
-    );
+    const handleCloneSubmit = React.useCallback(async (fv: FormValue) => {
+        setPendingFormValues(fv);
+        setOpenDeleteOriginalInstanceModal(true);
+    }, []);
 
     const handleSubmit = React.useCallback(
         async (fv: FormValue) => {
@@ -181,7 +179,7 @@ export const Create = () => {
                 key: '',
                 value: '',
             },
-        ] as QSVariables[]
+        ] as QSVariables[];
 
         return {
             ...values,
@@ -195,21 +193,24 @@ export const Create = () => {
         ...arrayMutators,
     }));
 
-    const handleModalSave = React.useCallback(async (isDeleteOriginalInstance: boolean) => {
-        if (pendingFormValues) {
-            if (isDeleteOriginalInstance) {
-                try {
-                    await deleteInstance({hash: cloneHash} as Instance, false);
-                } catch (e) {
-                    handleRequestErrorWithToast(e as AxiosError<{message: string}>);
+    const handleModalSave = React.useCallback(
+        async (isDeleteOriginalInstance: boolean) => {
+            if (pendingFormValues) {
+                if (isDeleteOriginalInstance) {
+                    try {
+                        await deleteInstance({hash: cloneHash} as Instance, false);
+                    } catch (e) {
+                        handleRequestErrorWithToast(e as AxiosError<{message: string}>);
+                    }
                 }
-            }
 
-            setOpenDeleteOriginalInstanceModal(false);
-            await handleSubmit(pendingFormValues);
-            setPendingFormValues(null);
-        }
-    }, [pendingFormValues, handleSubmit]);
+                setOpenDeleteOriginalInstanceModal(false);
+                await handleSubmit(pendingFormValues);
+                setPendingFormValues(null);
+            }
+        },
+        [pendingFormValues, handleSubmit, cloneHash, deleteInstance],
+    );
 
     return (
         <Page header={cloneHash ? i18n('clone-title') : i18n('create-title')}>
