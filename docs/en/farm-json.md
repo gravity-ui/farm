@@ -49,6 +49,20 @@
 - *Optional*
 > Environment variables for application instance. On Run only.
 
+### `.protectedEnv`
+- *String[]*
+- *Optional*
+> List of protected environment variable names that cannot be overridden when creating an instance.
+>
+> If a user tries to create an instance with environment variables from this list, the build will be rejected with an error.
+>
+> Example:
+> ```json
+> {
+>   "protectedEnv": ["DATABASE_URL", "SECRET_KEY", "API_TOKEN"]
+> }
+> ```
+
 ### `.envInheritance`
 - *Record<string, string>*
 - *Optional*

@@ -24,6 +24,7 @@ const init = async () => {
             'urlTemplate',
             {field: 'env', mergeWithGlobal: true},
             {field: 'runEnv', mergeWithGlobal: true},
+            'protectedEnv',
             'start',
             {field: 'envInheritance', mergeWithGlobal: true},
             'dockerfilePath',

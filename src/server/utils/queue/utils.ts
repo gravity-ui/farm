@@ -7,6 +7,7 @@ import {getFarmProvider} from '../../components/farm-provider';
 import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../models/common';
 import * as db from '../../utils/db';
 import {formatError} from '../common';
+import {fetchProjectConfig} from '../farmJsonConfig';
 import {addInstanceToGenerateQueue} from '../instance';
 import type {Stats} from '../stats';
 import {sendStats} from '../stats';
@@ -31,6 +32,41 @@ const prepareSendStats = (data: Instance, ctx: AppContext) => {
     };
 };
 
+const validateInstanceEnv = async (
+    generateData: GenerateInstanceData,
+): Promise<{valid: boolean; protectedEnv?: string[]}> => {
+    const envSet = new Set([
+        ...Object.keys(generateData.envVariables || {}),
+        ...Object.keys(generateData.runEnvVariables || {}),
+    ]);
+    if (envSet.size === 0) {
+        return {valid: true};
+    }
+
+    const farmJson = await fetchProjectConfig({
+        project: generateData.project,
+        branch: generateData.branch,
+        vcs: generateData.vcs,
+    });
+
+    const instanceFarmJson = farmJson.preview.find(
+        (conf) => conf.name === generateData.instanceConfigName,
+    );
+    const {protectedEnv} = instanceFarmJson || {};
+
+    if (!protectedEnv || protectedEnv.length === 0) {
+        return {valid: true};
+    }
+
+    const foundProtectedEnv = protectedEnv.filter((envName) => envSet.has(envName));
+
+    if (foundProtectedEnv.length === 0) {
+        return {valid: true};
+    }
+
+    return {valid: false, protectedEnv: foundProtectedEnv};
+};
+
 const buildInstance = ({
     sendBuildStats,
     instance,
@@ -40,8 +76,15 @@ const buildInstance = ({
 }) => {
     return new Promise<void>((resolve) => {
         const observable = new Observable<InstanceObservableEmitValue>((observer) => {
-            getFarmProvider()
-                .buildInstance(instance, observer)
+            validateInstanceEnv(instance)
+                .then((validationResult) => {
+                    if (validationResult.valid) {
+                        return getFarmProvider().buildInstance(instance, observer);
+                    }
+                    throw new Error(
+                        `Do not rewrite protected env: ${validationResult?.protectedEnv?.join(', ')}`,
+                    );
+                })
                 .catch((err) => {
                     observer.error(err);
                 })

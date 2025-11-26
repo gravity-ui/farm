@@ -1,5 +1,6 @@
 {
   "preview-generator": {
+    "protectedEnv": ["PROTECTED_SECRET"],
     "dockerfilePath": "./test-app.Dockerfile",
     "dockerInstanceHealthcheck": {
       "path": "/"
