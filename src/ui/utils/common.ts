@@ -9,7 +9,7 @@ import type {
     InstanceCommonStatus,
     ProjectFarmConfig,
 } from '../../shared/common';
-import {ENV_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
+import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 
 const envConfig = JSON.parse(window.FM.farmConfig) as FarmConfigBase;
 
@@ -95,6 +95,16 @@ export function prepareEnvVariables(
     );
 
     return {...vars, ...runVars};
+}
+
+export function prepareLabels(labels: {[key: string]: string} = {}) {
+    return Object.keys(labels).reduce(
+        (acc, key) => {
+            acc[`${LABEL_PREFIX}${key}`] = labels[key];
+            return acc;
+        },
+        {} as {[key: string]: string},
+    );
 }
 
 export const getBuildStatusTheme = (status?: InstanceCommonStatus) => {

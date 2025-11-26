@@ -1,0 +1,5 @@
+{
+  "delete-original-instance-title": "Delete original instance",
+  "delete-original-instance-description": "When cloning an instance, you can delete the original instance. This action cannot be undone. Are you sure you want to delete the original instance?",
+  "confirm-delete-original-instance": "Yes, delete instance {{hash}}"
+}
