@@ -30,9 +30,7 @@ const DeleteOriginalInstanceModal = ({
             <Dialog.Header caption={i18n('delete-original-instance-title')} />
             <Dialog.Body>
                 <Flex gap="6" direction="column" grow>
-                    <Text variant="body-2">
-                        {i18n('delete-original-instance-description')}
-                    </Text>
+                    <Text variant="body-2">{i18n('delete-original-instance-description')}</Text>
                     <Checkbox
                         size="l"
                         checked={isDeleteOriginalInstance}
