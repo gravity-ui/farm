@@ -64,6 +64,9 @@ export const BaseView: React.FC<BaseViewProps> = ({instance}) => {
             <DefinitionList.Item name={i18nInstance('url')} copyText={url}>
                 <Link href={url}>{url}</Link>
             </DefinitionList.Item>
+            <DefinitionList.Item name={i18nInstance('created-at')}>
+                {dateTimeParse(Number(instance.createdAt) || 'now')?.format('DD.MM.YYYY HH:mm')}
+            </DefinitionList.Item>
             <DefinitionList.Item name={i18nInstance('last-changes')}>
                 {dateTimeParse(Number(instance.startTime) || 'now')?.format('DD.MM.YYYY HH:mm')}
             </DefinitionList.Item>

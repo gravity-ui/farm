@@ -5,6 +5,7 @@
   "branch": "Branch",
   "url": "URL",
   "last-changes": "Last changes",
+  "created-at": "Created at",
   "description": "Description",
   "labels": "Labels",
   "env-variables": "Environment variables",

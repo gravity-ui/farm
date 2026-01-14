@@ -5,6 +5,7 @@
   "branch": "Ветка",
   "url": "URL",
   "last-changes": "Последние изменения",
+  "created-at": "Дата создания",
   "description": "Описание",
   "labels": "Метки",
   "env-variables": "Переменные окружения",
