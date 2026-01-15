@@ -67,7 +67,7 @@ export const BaseView: React.FC<BaseViewProps> = ({instance}) => {
             <DefinitionList.Item name={i18nInstance('created-at')}>
                 {dateTimeParse(Number(instance.createdAt) || 'now')?.format('DD.MM.YYYY HH:mm')}
             </DefinitionList.Item>
-            <DefinitionList.Item name={i18nInstance('last-changes')}>
+            <DefinitionList.Item name={i18nInstance('updated-at')}>
                 {dateTimeParse(Number(instance.startTime) || 'now')?.format('DD.MM.YYYY HH:mm')}
             </DefinitionList.Item>
             {instance.description && (

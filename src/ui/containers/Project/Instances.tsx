@@ -164,7 +164,7 @@ const columns: TableColumnConfig<QueuedInstance>[] = [
     },
     {
         id: 'startTime',
-        name: i18nInstance('last-changes'),
+        name: i18nInstance('updated-at'),
         template: ({startTime}) =>
             dateTimeParse(Number(startTime) || 'now')?.format('DD.MM.YYYY HH:mm'),
         meta: {

@@ -18,7 +18,7 @@ const columns: TableColumnConfig<{}>[] = [
     },
     {
         id: 'createdAt',
-        name: i18nInstance('last-changes'),
+        name: i18nInstance('updated-at'),
         template: renderSkeleton,
     },
     {
