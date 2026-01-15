@@ -154,8 +154,17 @@ const columns: TableColumnConfig<QueuedInstance>[] = [
         },
     },
     {
+        id: 'createdAt',
+        name: i18nInstance('created-at'),
+        template: ({createdAt}) =>
+            dateTimeParse(Number(createdAt) || 'now')?.format('DD.MM.YYYY HH:mm'),
+        meta: {
+            sort: sortDateFactory('createdAt'),
+        },
+    },
+    {
         id: 'startTime',
-        name: i18nInstance('last-changes'),
+        name: i18nInstance('updated-at'),
         template: ({startTime}) =>
             dateTimeParse(Number(startTime) || 'now')?.format('DD.MM.YYYY HH:mm'),
         meta: {
