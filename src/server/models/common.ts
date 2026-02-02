@@ -16,6 +16,7 @@ export interface InstanceRow {
     url_template: string | null;
     description: string | null;
     labels: string | null;
+    stop_timeout: number | null;
 }
 
 // TODO(golbahsg): Merge instance types
@@ -30,6 +31,7 @@ export interface InstanceInfo {
     envVariables?: Record<string, string>;
     runEnvVariables?: Record<string, string>;
     labels?: Record<string, string>;
+    stopTimeout?: number;
 }
 
 export interface InstanceDescription {
