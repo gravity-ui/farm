@@ -13,8 +13,8 @@ const Locker = {
     deleteInstances: false,
 };
 
-const instanceStopTimeout = getGlobalFarmConfig().instanceStopTimeout ?? ms('1h');
-const instanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout;
+const globalInstanceStopTimeout = getGlobalFarmConfig().instanceStopTimeout ?? ms('1h');
+const globalInstanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout;
 
 export const isTimeout = (now: number, time: number, timeout: number) => {
     const diff = now - time;
@@ -26,7 +26,7 @@ export const isTimeout = (now: number, time: number, timeout: number) => {
 };
 
 const stopInstances = async () => {
-    if (instanceStopTimeout === 0 || Locker.stopInstances) {
+    if (globalInstanceStopTimeout === 0 || Locker.stopInstances) {
         return;
     }
 
@@ -40,10 +40,12 @@ const stopInstances = async () => {
         const runningInstances = instances.filter((p) => p.status === 'running');
         for (const process of runningInstances) {
             const instance = await db.getInstance(process.hash);
+            const instanceStopTimeout = instance?.stopTimeout || globalInstanceStopTimeout;
 
             // if `instanceStopTimeout` < building time: then will call `stopInstance` before finishing build.
             if (
                 instance?.status === 'generated' &&
+                instanceStopTimeout > 0 &&
                 isTimeout(now, Number(process.startTime), instanceStopTimeout)
             ) {
                 instancesToStop.push(instance);
@@ -65,14 +67,14 @@ const stopInstances = async () => {
 };
 
 const deleteInstancesByTTL = async () => {
-    if (!instanceDeleteTimeout || Locker.deleteInstances) {
+    if (!globalInstanceDeleteTimeout || Locker.deleteInstances) {
         return;
     }
 
     try {
         Locker.deleteInstances = true;
 
-        const instancesToDelete = await db.getInstancesByTTL(instanceDeleteTimeout);
+        const instancesToDelete = await db.getInstancesByTTL(globalInstanceDeleteTimeout);
 
         await Promise.all(
             instancesToDelete.map((instance) =>

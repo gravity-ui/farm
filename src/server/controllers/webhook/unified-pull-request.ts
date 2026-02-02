@@ -118,6 +118,7 @@ export async function handleUnifiedPullRequest(
                     envVariables: finalEnvVariables,
                     runEnvVariables: finalRunEnvVariables,
                     labels: finalLabels,
+                    stopTimeout: commonData.stopTimeout,
                 });
             });
 

@@ -24,6 +24,7 @@ export async function insertInstance(
         status: instance.status,
         description: instance.description ?? null,
         instance_config_name: instance.instanceConfigName,
+        stop_timeout: instance.stopTimeout ?? null,
         hash: instance.hash,
         created: String(Date.now()),
     });
@@ -66,6 +67,7 @@ const mapInstanceRow = (row: InstanceRow): Instance => ({
     runEnvVariables: _.isEmpty(row.run_env_variables)
         ? undefined
         : JSON.parse(row.run_env_variables as string),
+    stopTimeout: row.stop_timeout || undefined,
 });
 
 export async function listInstances(): Promise<Instance[]> {
@@ -154,6 +156,7 @@ export async function getInstance(hash: string): Promise<Instance | undefined> {
         runEnvVariables: result.run_env_variables ? JSON.parse(result.run_env_variables) : {},
         labels: result.labels ? JSON.parse(result.labels) : {},
         description: result.description || '',
+        stopTimeout: result.stop_timeout || undefined,
     };
 }
 

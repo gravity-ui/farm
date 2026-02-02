@@ -21,6 +21,7 @@ API Farm предоставляет интерфейс для управлени
     urlTemplate?: string;
     instanceConfigName?: string;
     labels?: Record<string, string>;
+    stopTimeout?: number;
     [key: string]: unknown;
 }
 ```
@@ -553,6 +554,7 @@ hash: string
     urlTemplate?: string;
     description?: string;
     instanceConfigName: string;
+    stopTimeout?: number;
 }
 ```
 

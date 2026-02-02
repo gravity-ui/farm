@@ -23,6 +23,7 @@ export interface Instance {
     urlTemplate?: string;
     description?: string;
     instanceConfigName: string;
+    stopTimeout?: number;
 }
 
 export interface InstanceWithProviderStatus extends Instance {

@@ -25,6 +25,7 @@ export interface CommonPullRequestData {
     runEnvVariables?: Record<string, string>;
     labels?: Record<string, string>;
     uniqByLabels?: string[];
+    stopTimeout?: number;
     webhookActionParameters?: Record<string, any>;
 }
 

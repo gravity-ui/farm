@@ -6,6 +6,7 @@ export type GenerateInstanceRequest = {
     urlTemplate?: string;
     instanceConfigName?: string;
     labels?: Record<string, string>;
+    stopTimeout?: number;
     [key: string]: unknown;
 };
 
