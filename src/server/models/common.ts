@@ -17,6 +17,7 @@ export interface InstanceRow {
     description: string | null;
     labels: string | null;
     stop_timeout: number | null;
+    build_restart_count?: number;
 }
 
 // TODO(golbahsg): Merge instance types

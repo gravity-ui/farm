@@ -12,6 +12,8 @@ import {addInstanceToGenerateQueue} from '../instance';
 import type {Stats} from '../stats';
 import {sendStats} from '../stats';
 
+import {MAX_BUILD_RESTARTS} from './constants';
+
 const prepareSendStats = (data: Instance, ctx: AppContext) => {
     const start = Date.now();
 
@@ -185,7 +187,12 @@ export const getInstancesToRestart = async () => {
     generatingInstances.forEach((instance) => {
         const item = instances.find((p) => p.hash === instance.hash);
         // Provider creates new process right before starting the app, so we need to restart only errored instances here.
-        if (item?.status === 'errored') {
+        // Do not restart if the instance has already exceeded the maximum number of build restarts.
+        if (
+            item?.status === 'errored' &&
+            instance.buildRestartCount &&
+            instance.buildRestartCount < MAX_BUILD_RESTARTS
+        ) {
             instancesToRestart.push(instance);
         }
     });
@@ -194,5 +201,10 @@ export const getInstancesToRestart = async () => {
 };
 
 export const restartFailedBuilds = async (instances: Instance[]) => {
-    await Promise.all(instances.map((instance) => addInstanceToGenerateQueue(instance)));
+    await Promise.all(
+        instances.map(async (instance) => {
+            await db.incrementInstanceBuildRestartCount(instance.hash);
+            await addInstanceToGenerateQueue(instance);
+        }),
+    );
 };

@@ -24,6 +24,7 @@ export interface Instance {
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
+    buildRestartCount?: number;
 }
 
 export interface InstanceWithProviderStatus extends Instance {
@@ -72,6 +73,8 @@ export interface FarmConfigBase {
     instanceDeleteTimeout?: number;
     autoStartDelay?: number;
     maxConcurrentBuilds?: number;
+    /** Maximum number of automatic restarts for failed builds. After this limit, the instance stays in 'errored' state. */
+    maxBuildRestarts?: number;
     maxRunningInstances?: number;
     urlTemplate?: string;
     defaultBranch?: string;

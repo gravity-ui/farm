@@ -68,6 +68,7 @@ const mapInstanceRow = (row: InstanceRow): Instance => ({
         ? undefined
         : JSON.parse(row.run_env_variables as string),
     stopTimeout: row.stop_timeout || undefined,
+    buildRestartCount: row.build_restart_count || undefined,
 });
 
 export async function listInstances(): Promise<Instance[]> {
@@ -103,6 +104,10 @@ export async function getInstancesByStatus({
     return data.map(mapInstanceRow);
 }
 
+export async function incrementInstanceBuildRestartCount(hash: string): Promise<void> {
+    await knexInstance('instances').where({hash}).increment('build_restart_count', 1);
+}
+
 export async function countGeneratingInstances(): Promise<number> {
     // @ts-ignore Incorrect type of knex
     const [{count}] = await knexInstance('instances')
@@ -133,7 +138,12 @@ export async function updateInstanceStatus(
     hash: string,
     status: InstanceCommonStatus,
 ): Promise<void> {
-    await knexInstance('instances').where({hash}).update({status});
+    const update: Partial<InstanceRow> = {status};
+    // Reset build restart count when instance is generated
+    if (status === 'generated') {
+        update.build_restart_count = 0;
+    }
+    await knexInstance('instances').where({hash}).update(update);
 }
 
 export async function getInstance(hash: string): Promise<Instance | undefined> {
