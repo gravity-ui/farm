@@ -13,10 +13,7 @@ const runQueue = async () => {
         // 1. Delete instances
         queue.deleteInstances(),
 
-        // 2. Restart failed builds (re-add them to build queue)
-        queue.restartFailedBuilds(),
-
-        // 3. Build instances
+        // 2. Build instances
         queue.buildInstances(),
     ]).catch((e) => {
         getNodeKit().ctx.logError('QUEUE::runQueue', wrapInternalError(e));

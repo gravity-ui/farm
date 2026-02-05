@@ -8,7 +8,6 @@ import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../mode
 import * as db from '../../utils/db';
 import {formatError} from '../common';
 import {fetchProjectConfig} from '../farmJsonConfig';
-import {addInstanceToGenerateQueue} from '../instance';
 import type {Stats} from '../stats';
 import {sendStats} from '../stats';
 
@@ -175,24 +174,4 @@ export const generateInstance = async (instance: Instance) => {
 export const deleteInstance = async (instance: Instance) => {
     await getFarmProvider().deleteInstance(instance.hash);
     await db.clearInstanceData(instance.hash);
-};
-
-export const getInstancesToRestart = async () => {
-    const generatingInstances = await db.getInstancesByStatus({status: 'generating'});
-    const instances = await getFarmProvider().getInstances();
-
-    const instancesToRestart: Instance[] = [];
-    generatingInstances.forEach((instance) => {
-        const item = instances.find((p) => p.hash === instance.hash);
-        // Provider creates new process right before starting the app, so we need to restart only errored instances here.
-        if (item?.status === 'errored') {
-            instancesToRestart.push(instance);
-        }
-    });
-
-    return instancesToRestart;
-};
-
-export const restartFailedBuilds = async (instances: Instance[]) => {
-    await Promise.all(instances.map((instance) => addInstanceToGenerateQueue(instance)));
 };
