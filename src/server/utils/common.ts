@@ -10,6 +10,8 @@ import {envConfig} from '../configs/env';
 import type {InstanceInfo} from '../models/common';
 import type {FarmConfig} from '../models/farmConfig';
 
+import {INSTANCE_HASH_LENGTH} from './queue/constants';
+
 export function getProviderConfig() {
     // expected directly using
     return envConfig.farmProvider;
@@ -22,8 +24,6 @@ export function generateInstanceHash(
         additionalEnvVariables: Instance['envVariables'];
         /** @description additionalRunEnvVariables - only for defined on generation request, and not from already defined configurations */
         additionalRunEnvVariables: Instance['runEnvVariables'];
-        /** @description max length of instance hash; */
-        instanceHashLength?: number;
     },
 ) {
     let {
@@ -51,8 +51,8 @@ export function generateInstanceHash(
     // replace first number with alphabet symbol for support most domain's standard implementation
     let result = hash.replace(/^[0-9]{1}/, 'x');
 
-    if (info.instanceHashLength && info.instanceHashLength > 0) {
-        result = result.slice(0, info.instanceHashLength);
+    if (INSTANCE_HASH_LENGTH) {
+        result = result.slice(0, Math.max(INSTANCE_HASH_LENGTH, 4));
     }
 
     return result;

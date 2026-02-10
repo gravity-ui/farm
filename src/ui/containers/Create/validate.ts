@@ -9,7 +9,6 @@ const schema = z
         project: z.string(),
         vcs: z.string(),
         branch: z.string(),
-        instanceHashLength: z.number().min(4).positive().optional(),
     })
     .required();
 

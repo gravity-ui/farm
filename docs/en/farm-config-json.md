@@ -51,6 +51,11 @@ Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
 - *Optional*
 > Maximum number of running instances. No limit by default. When limit is reached, new builds will be rejected.
 
+### `instanceHashLength`
+- *Number*
+- *Optional*
+> Maximum length of instance hash . If set, the hash is truncated to this length.
+
 ### `defaultBranch`
 - *String*
 - *Required*

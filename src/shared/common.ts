@@ -24,7 +24,6 @@ export interface Instance {
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
-    instanceHashLength?: number;
 }
 
 export interface InstanceWithProviderStatus extends Instance {
@@ -77,6 +76,7 @@ export interface FarmConfigBase {
     urlTemplate?: string;
     defaultBranch?: string;
     vcs?: string;
+    instanceHashLength?: number;
 
     vcsCredentials?: {
         [key: string]: VcsCredentialsConfig | undefined;

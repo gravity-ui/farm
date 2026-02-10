@@ -4,7 +4,6 @@
   "description": "Описание",
   "url-template": "Шаблон URL",
   "instance-config": "Конфиг инстанса",
-  "instance-hash-length": "Длина хэша инстанса",
   "variables": "Переменные окружения",
   "run-variables": "Переменные окружения рантайма",
   "labels": "Метки"
