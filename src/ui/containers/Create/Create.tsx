@@ -85,6 +85,7 @@ export const Create = () => {
                 vcs: fv.vcs,
                 instanceConfigName: fv.instanceConfigName,
                 labels: {},
+                instanceHashLength: Number(fv.instanceHashLength),
             };
 
             if (Array.isArray(fv.variables)) {

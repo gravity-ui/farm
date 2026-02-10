@@ -193,6 +193,10 @@ export const CreateFormContent = ({
                     )}
                 </FormRow>
 
+                <FormRow label={i18n('instance-hash-length')}>
+                    <TextField name="instanceHashLength" type="number" />
+                </FormRow>
+
                 <VariablesFieldRow name="variables" title={i18n('variables')} />
                 <VariablesFieldRow name="runVariables" title={i18n('run-variables')} />
                 <VariablesFieldRow name="labels" title={i18n('labels')} />

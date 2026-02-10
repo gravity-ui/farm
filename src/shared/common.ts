@@ -24,6 +24,7 @@ export interface Instance {
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
+    instanceHashLength?: number;
 }
 
 export interface InstanceWithProviderStatus extends Instance {

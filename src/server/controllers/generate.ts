@@ -18,6 +18,7 @@ const schema = z.object({
     instanceConfigName: z.string().optional(),
     labels: z.record(z.string(), z.string()).optional(),
     stopTimeout: z.number().optional(),
+    instanceHashLength: z.number().positive().min(4).optional(),
 });
 
 const generate = async (req: Request, res: Response) => {
@@ -38,6 +39,7 @@ const generate = async (req: Request, res: Response) => {
         instanceConfigName = '',
         labels,
         stopTimeout,
+        instanceHashLength,
         ...restParameters
     } = parsed.data;
 
@@ -94,6 +96,7 @@ const generate = async (req: Request, res: Response) => {
         vcs,
         additionalEnvVariables: finalEnvVariables,
         additionalRunEnvVariables: finalRunEnvVariables,
+        instanceHashLength,
     });
 
     let generateErrorMessage: string | null = null;
@@ -110,6 +113,7 @@ const generate = async (req: Request, res: Response) => {
             instanceConfigName,
             labels: finalLabels,
             stopTimeout,
+            hash,
         })
         .catch((e: Error) => {
             req.ctx.logError('GENERATE ERROR:', wrapInternalError(e));

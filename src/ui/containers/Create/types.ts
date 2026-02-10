@@ -14,4 +14,7 @@ export type FormValue = Required<
         runVariables: QSVariables[];
         labels: QSVariables[];
     }
->;
+> & {
+    // Form treats number input as string, so we need to convert it to number when submitting.
+    instanceHashLength?: string;
+};

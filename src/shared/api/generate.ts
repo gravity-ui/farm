@@ -7,6 +7,7 @@ export type GenerateInstanceRequest = {
     instanceConfigName?: string;
     labels?: Record<string, string>;
     stopTimeout?: number;
+    instanceHashLength?: number;
     [key: string]: unknown;
 };
 

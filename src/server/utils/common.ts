@@ -22,6 +22,8 @@ export function generateInstanceHash(
         additionalEnvVariables: Instance['envVariables'];
         /** @description additionalRunEnvVariables - only for defined on generation request, and not from already defined configurations */
         additionalRunEnvVariables: Instance['runEnvVariables'];
+        /** @description max length of instance hash; */
+        instanceHashLength?: number;
     },
 ) {
     let {
@@ -47,7 +49,13 @@ export function generateInstanceHash(
         runEnvVariables: additionalRunEnvVariables,
     });
     // replace first number with alphabet symbol for support most domain's standard implementation
-    return hash.replace(/^[0-9]{1}/, 'x');
+    let result = hash.replace(/^[0-9]{1}/, 'x');
+
+    if (info.instanceHashLength && info.instanceHashLength > 0) {
+        result = result.slice(0, info.instanceHashLength);
+    }
+
+    return result;
 }
 
 /** @deprecated */
