@@ -13,16 +13,14 @@ import {RunningLimitsErrorMessage, isGenerateAllowedByLimits} from './limiter';
  * @throws {Error} if instance is not allowed to generate
  */
 async function addInstanceToGenerateQueue(instanceInfo: InstanceInfo) {
-    const hash =
-        instanceInfo.hash ??
-        generateInstanceHash({
-            branch: instanceInfo.branch,
-            instanceConfigName: instanceInfo.instanceConfigName,
-            project: instanceInfo.project,
-            vcs: instanceInfo.vcs,
-            additionalEnvVariables: instanceInfo.envVariables ?? {},
-            additionalRunEnvVariables: instanceInfo.runEnvVariables ?? {},
-        });
+    const hash = generateInstanceHash({
+        branch: instanceInfo.branch,
+        instanceConfigName: instanceInfo.instanceConfigName,
+        project: instanceInfo.project,
+        vcs: instanceInfo.vcs,
+        additionalEnvVariables: instanceInfo.envVariables ?? {},
+        additionalRunEnvVariables: instanceInfo.runEnvVariables ?? {},
+    });
 
     const isGenerateAllowed = await isGenerateAllowedByLimits(instanceInfo.project, hash);
     if (!isGenerateAllowed) {

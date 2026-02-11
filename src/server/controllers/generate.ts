@@ -110,7 +110,6 @@ const generate = async (req: Request, res: Response) => {
             instanceConfigName,
             labels: finalLabels,
             stopTimeout,
-            hash,
         })
         .catch((e: Error) => {
             req.ctx.logError('GENERATE ERROR:', wrapInternalError(e));

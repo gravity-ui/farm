@@ -10,12 +10,12 @@ import {envConfig} from '../configs/env';
 import type {InstanceInfo} from '../models/common';
 import type {FarmConfig} from '../models/farmConfig';
 
-import {INSTANCE_HASH_LENGTH} from './queue/constants';
-
 export function getProviderConfig() {
     // expected directly using
     return envConfig.farmProvider;
 }
+
+const INSTANCE_HASH_LENGTH = getGlobalFarmConfig().instanceHashLength;
 
 export function generateInstanceHash(
     // required to ensure passing all props

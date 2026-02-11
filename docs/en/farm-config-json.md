@@ -54,7 +54,7 @@ Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
 ### `instanceHashLength`
 - *Number*
 - *Optional*
-> Maximum length of instance hash . If set, the hash is truncated to this length.
+> Maximum length of instance hash. If set, the hash is truncated to this length. Minimum value is 4; when not set, no truncation is applied.
 
 ### `defaultBranch`
 - *String*
