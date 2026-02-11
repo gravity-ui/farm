@@ -76,6 +76,7 @@ export interface FarmConfigBase {
     urlTemplate?: string;
     defaultBranch?: string;
     vcs?: string;
+    instanceHashLength?: number;
 
     vcsCredentials?: {
         [key: string]: VcsCredentialsConfig | undefined;

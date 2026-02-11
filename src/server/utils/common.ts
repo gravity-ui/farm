@@ -15,6 +15,8 @@ export function getProviderConfig() {
     return envConfig.farmProvider;
 }
 
+const INSTANCE_HASH_LENGTH = getGlobalFarmConfig().instanceHashLength;
+
 export function generateInstanceHash(
     // required to ensure passing all props
     info: Required<Pick<Instance, 'branch' | 'instanceConfigName' | 'vcs' | 'project'>> & {
@@ -47,7 +49,13 @@ export function generateInstanceHash(
         runEnvVariables: additionalRunEnvVariables,
     });
     // replace first number with alphabet symbol for support most domain's standard implementation
-    return hash.replace(/^[0-9]{1}/, 'x');
+    let result = hash.replace(/^[0-9]{1}/, 'x');
+
+    if (INSTANCE_HASH_LENGTH) {
+        result = result.slice(0, Math.max(INSTANCE_HASH_LENGTH, 4));
+    }
+
+    return result;
 }
 
 /** @deprecated */

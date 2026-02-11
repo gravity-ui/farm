@@ -87,7 +87,6 @@ const restartInstance = async (instance: Instance) => {
 
 /**
  * Get all projects with instances
- *
  * @returns Array of projects with instances
  */
 const getProjectsWithInstances = async () => {
