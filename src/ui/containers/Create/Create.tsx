@@ -4,7 +4,7 @@ import type {AxiosError} from 'axios';
 import arrayMutators from 'final-form-arrays';
 import {isString} from 'lodash';
 import {Form} from 'react-final-form';
-import {useLocation, useNavigate} from 'react-router-dom';
+import {generatePath, useLocation, useNavigate} from 'react-router-dom';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../../shared/api/generate';
 import type {
@@ -13,6 +13,7 @@ import type {
 } from '../../../shared/api/getInstanceConfig';
 import type {Instance} from '../../../shared/common';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
+import {uiRoutes} from '../../../shared/uiRoutes';
 import {Page} from '../../components/layouts/Page/Page';
 import {ci18n} from '../../i18n-common/ci18n';
 import api from '../../services/api';
@@ -121,8 +122,7 @@ export const Create = () => {
                 });
 
                 if (response.hash) {
-                    const searchParams = new URLSearchParams({hash: response.hash});
-                    navigate(`/api/logs?${searchParams.toString()}`);
+                    navigate(generatePath(uiRoutes.instance, {hash: response.hash}));
                 }
             } catch (e) {
                 handleRequestErrorWithToast(e as AxiosError<{message: string}>);
