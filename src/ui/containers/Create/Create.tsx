@@ -12,8 +12,8 @@ import type {
     GetInstanceConfigResponse,
 } from '../../../shared/api/getInstanceConfig';
 import {uiRoutes} from '../../../shared/uiRoutes';
-import type {Instance} from '../../../shared/common';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../../shared/constants';
+import type {Instance} from '../../../shared/common';
 import {Page} from '../../components/layouts/Page/Page';
 import {ci18n} from '../../i18n-common/ci18n';
 import api from '../../services/api';
