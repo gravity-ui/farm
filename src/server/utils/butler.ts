@@ -14,7 +14,9 @@ const Locker = {
 };
 
 const globalInstanceStopTimeout = getGlobalFarmConfig().instanceStopTimeout ?? ms('1h');
-const globalInstanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout;
+const configuredInstanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout;
+const globalInstanceDeleteTimeout =
+    configuredInstanceDeleteTimeout === undefined ? ms('30d') : configuredInstanceDeleteTimeout;
 
 export const isTimeout = (now: number, time: number, timeout: number) => {
     const diff = now - time;
@@ -67,7 +69,7 @@ const stopInstances = async () => {
 };
 
 const deleteInstancesByTTL = async () => {
-    if (!globalInstanceDeleteTimeout || Locker.deleteInstances) {
+    if (globalInstanceDeleteTimeout <= 0 || Locker.deleteInstances) {
         return;
     }
 
@@ -75,9 +77,14 @@ const deleteInstancesByTTL = async () => {
         Locker.deleteInstances = true;
 
         const instancesToDelete = await db.getInstancesByTTL(globalInstanceDeleteTimeout);
+        const providerInstances = await getFarmProvider().getInstances();
+        const runningHashes = new Set(
+            providerInstances.filter((p) => p.status === 'running').map((p) => p.hash),
+        );
+        const instancesSafeToDelete = instancesToDelete.filter((i) => !runningHashes.has(i.hash));
 
         await Promise.all(
-            instancesToDelete.map((instance) =>
+            instancesSafeToDelete.map((instance) =>
                 instanceUtils
                     .addInstanceToDeleteQueue(instance)
                     .catch(() => console.warn(`error while deleting instance "${instance.hash}"`)),
