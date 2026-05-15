@@ -14,9 +14,7 @@ const Locker = {
 };
 
 const globalInstanceStopTimeout = getGlobalFarmConfig().instanceStopTimeout ?? ms('1h');
-const configuredInstanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout;
-const globalInstanceDeleteTimeout =
-    configuredInstanceDeleteTimeout === undefined ? ms('30d') : configuredInstanceDeleteTimeout;
+const globalInstanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout ?? ms('30d');
 
 export const isTimeout = (now: number, time: number, timeout: number) => {
     const diff = now - time;
