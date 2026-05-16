@@ -27,7 +27,7 @@ Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
 ### `instanceDeleteTimeout`
 - *Number*
 - *Optional*
-> Ms time after which only **generated** instances will be removed. Default is unset (instances will **not** be removed)
+> Ms after creation after which only **generated** instances are removed (same lifecycle status as when stopped: rows stay `generated` in DB). Default is **30 days** when omitted. Instances the provider still reports as **running** are not queued for deletion. Set to `0` or a negative value to turn off automatic deletion.
 
 ### `urlTemplate`
 - *String*

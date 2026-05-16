@@ -67,7 +67,9 @@ export interface FarmConfigBase {
     /**
      * Instance life before deletion in ms.
      *
-     * Deletes only `generated` instances, that were created more than `instanceDeleteTimeout` ms ago.
+     * Deletes only `generated` instances whose `createdAt` is older than this value.
+     * Instances still reported as `running` by the provider are skipped until they stop.
+     * When omitted, defaults to 30 days. Set to `0` or a negative value to disable automatic deletion.
      */
     instanceDeleteTimeout?: number;
     autoStartDelay?: number;
