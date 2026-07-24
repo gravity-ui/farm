@@ -23,15 +23,23 @@
 - *Required*
 > Целевой Docker репозиторий для собранных образов.
 
+### `buildkit`
+- *Object*
+- *Optional*
+> Включает движок сборки на rootless BuildKit. Если блок не задан — сборка идёт через Docker-движок (docker-сокет ноды, `dockerSocketHostPath`). Если задан — сборка выполняется внутри builder-пода через rootless BuildKit с эфемерным локальным хранилищем и внешним **registry**-кэшом, что убирает зависимость от docker-сокета ноды.
+> - `image` (*String*, обязательно): образ rootless BuildKit, например `moby/buildkit:v0.16.0-rootless` или его зеркало в вашем реестре. Существующий `builderImage` по-прежнему используется для init-контейнера checkout исходников.
+>
+> Ref registry-кэша выводится из `targetRepository` как `<targetRepository>/<project>:buildcache` и экспортируется с `mode=min`. Учётные данные реестра (и для push образа, и для push/pull кэша) берутся с ноды через `dockerCredsHostPath`.
+
 ### `dockerSocketHostPath`
 - *String*
 - *Optional*
-> Путь к сокету Docker на хосте для операций сборки.
+> Путь к сокету Docker на хосте для операций сборки. Используется только устаревшим Docker-движком (когда `buildkit` не задан).
 
 ### `dockerCredsHostPath`
 - *String*
 - *Optional*
-> Путь к учетным данным Docker на хосте.
+> Путь к учетным данным Docker на хосте. Монтируется в builder для аутентификации в реестре (push образа и, для движка `buildkit`, push/pull кэша сборки).
 
 ### `ingressClassName`
 - *String*

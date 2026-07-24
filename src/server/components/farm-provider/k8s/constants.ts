@@ -5,6 +5,7 @@ export enum K8sPodStatus {
     Failed = 'Failed',
 }
 
+// TODO(DakEnviy): Add PodInitializing
 export enum K8sContainerStatus {
     Terminating = 'Terminating',
     Ready = 'Ready',

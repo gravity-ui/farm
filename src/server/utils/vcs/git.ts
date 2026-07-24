@@ -61,7 +61,7 @@ export class GitVcs implements Vcs {
         const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
 
         return [
-            `mkdir /${TEMP_PATH}`,
+            `mkdir -p /${TEMP_PATH}`,
             `cd /${TEMP_PATH}`,
             `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`,
             `cd '${instancePath}'`,
