@@ -8,9 +8,15 @@ import type {
     InstanceProviderInfo,
     InstanceProviderStatus,
 } from '../../../../shared/common';
+import {TEMP_PATH} from '../../../constants';
 import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../../models/common';
 import {CommandError} from '../../../utils/command-error';
-import {generateInstanceHref, wrapInternalError} from '../../../utils/common';
+import {
+    buildPath,
+    generateInstanceHref,
+    getProjectFarmConfig,
+    wrapInternalError,
+} from '../../../utils/common';
 import {
     type FarmJsonConfig,
     fetchProjectConfig,
@@ -26,6 +32,8 @@ import {K8sContainerStatus} from './constants';
 import type {
     FarmK8sProviderConfig,
     K8sBuilderPodSpec,
+    K8sBuildkitConfig,
+    K8sBuildkitPodSpec,
     K8sContainerInfo,
     K8sInstanceResourceNames,
     K8sLabels,
@@ -48,8 +56,17 @@ const MANAGER_NAME = 'Farm';
 const CLEANER_JOB_NAME = 'farm-cleaner';
 
 const BUILDER_CONTAINER_NAME = 'builder';
+const CHECKOUT_CONTAINER_NAME = 'checkout';
 const CLEANER_CONTAINER_NAME = 'cleaner';
 const INSTANCE_CONTAINER_NAME = 'application';
+
+const DOCKER_SOCKET_VOLUME_NAME = 'docker-socket';
+const DOCKER_CREDS_VOLUME_NAME = 'docker-creds';
+const WORKSPACE_VOLUME_NAME = 'workspace';
+const BUILDKIT_STATE_VOLUME_NAME = 'buildkit-state';
+
+const BUILDKIT_USER_ID = 1000;
+const BUILDKIT_USER_NAME = 'builder';
 
 const FARM_LABELS: K8sLabels = {
     'app.kubernetes.io/managed-by': MANAGER_NAME,
@@ -161,6 +178,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             cleanerRandomDelayMinutes: config.cleanerRandomDelayMinutes ?? 2 * 60,
             cleanerJobsHistoryLimit: config.cleanerJobsHistoryLimit ?? 5,
             cleanerPruneFilter: config.cleanerPruneFilter ?? 'until=24h',
+            buildkit: config.buildkit ?? null,
         };
 
         const kubeConfig = new k8s.KubeConfig();
@@ -174,9 +192,11 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     async startup(): Promise<void> {
-        if (!this.config.disableCleaner) {
-            this.startCleaner();
+        if (this.config.buildkit || this.config.disableCleaner) {
+            return this.deleteCleanerJob();
         }
+
+        this.startCleaner();
 
         return Promise.resolve();
     }
@@ -210,15 +230,70 @@ export class K8sFarmProvider extends BaseFarmProvider {
             const instanceImage = this.getInstanceImage(project, hash);
 
             await wrapAsCommand(observer, 'Build image', async () => {
-                builderInfo = await this.runBuilderContainer(
-                    generateData,
-                    instanceConfig,
-                    instanceImage,
-                );
+                if (this.config.buildkit) {
+                    const infos = await this.runBuildkitContainer(
+                        this.config.buildkit,
+                        generateData,
+                        instanceConfig,
+                        instanceImage,
+                    );
+                    const checkoutInfo = infos[0];
+                    builderInfo = infos[1];
+
+                    await this.waitForContainerStatus(
+                        checkoutInfo,
+                        [
+                            K8sContainerStatus.Running,
+                            K8sContainerStatus.Completed,
+                            K8sContainerStatus.Error,
+                        ],
+                        startBuilderTimeout,
+                    );
+
+                    await this.followContainerLogs(checkoutInfo, (log) => {
+                        observer.next({
+                            output: [
+                                {
+                                    stdout: log,
+                                    code: null,
+                                    command: null,
+                                    stderr: null,
+                                    duration: null,
+                                },
+                            ],
+                        });
+                    });
+
+                    const checkoutStatus = await this.waitForContainerStatus(
+                        checkoutInfo,
+                        [K8sContainerStatus.Completed, K8sContainerStatus.Error],
+                        buildTimeout,
+                    );
+                    const checkoutExitCode = await this.readContainerExitCode(checkoutInfo);
+
+                    if (checkoutStatus === K8sContainerStatus.Error) {
+                        await this.k8sApi.deleteNamespacedPod(
+                            builderInfo.podName,
+                            builderInfo.namespace,
+                        );
+
+                        throw new CommandError(checkoutExitCode);
+                    }
+                } else {
+                    builderInfo = await this.runBuilderContainer(
+                        generateData,
+                        instanceConfig,
+                        instanceImage,
+                    );
+                }
 
                 await this.waitForContainerStatus(
                     builderInfo,
-                    K8sContainerStatus.Ready,
+                    [
+                        K8sContainerStatus.Ready,
+                        K8sContainerStatus.Completed,
+                        K8sContainerStatus.Error,
+                    ],
                     startBuilderTimeout,
                 );
 
@@ -239,7 +314,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
 
                 await this.k8sApi.deleteNamespacedPod(builderInfo.podName, builderInfo.namespace);
 
-                if (builderStatus === 'Error') {
+                if (builderStatus === K8sContainerStatus.Error) {
                     throw new CommandError(builderExitCode);
                 }
             });
@@ -421,19 +496,9 @@ export class K8sFarmProvider extends BaseFarmProvider {
             .map(([key, value]) => `--build-arg ${key}='${value.replace(/'/g, "\\'")}'`)
             .join(' ');
 
-        let buildSecretEnvVariableKeys: string[] = [];
-
-        if (builderEnvSecretName !== null) {
-            const {body: secret} = await this.k8sApi.readNamespacedSecret(
-                builderEnvSecretName,
-                namespace,
-            );
-
-            if (secret.data) {
-                buildSecretEnvVariableKeys = Object.keys(secret.data);
-            }
-        }
-
+        const buildSecretEnvVariableKeys = builderEnvSecretName
+            ? await this.readSecretKeys(builderEnvSecretName)
+            : [];
         const buildSecrets = buildSecretEnvVariableKeys
             .map((key) => `--secret id=${key},env=${key}`)
             .join(' ');
@@ -441,16 +506,16 @@ export class K8sFarmProvider extends BaseFarmProvider {
         const vcs = getVcs(generateData.vcs);
 
         const builderPodSpec = this.getBuilderPodSpec({
+            containerName: BUILDER_CONTAINER_NAME,
             image: builderImage,
             envSecretName: builderEnvSecretName ?? undefined,
-            resources: builderResources ?? undefined,
-            containerName: BUILDER_CONTAINER_NAME,
             envVariables: buildEnvVariables,
             commands: [
                 ...vcs.getK8sCheckoutCommands(generateData),
                 `docker build . -f '${dockerfilePath}' -t ${targetImage} --network host ${buildArgs} ${buildSecrets}`,
                 `docker push ${targetImage}`,
             ],
+            resources: builderResources ?? undefined,
         });
 
         const {body: pod} = await this.k8sApi.createNamespacedPod(namespace, {
@@ -471,6 +536,101 @@ export class K8sFarmProvider extends BaseFarmProvider {
         });
 
         return getContainerInfo(pod, BUILDER_CONTAINER_NAME);
+    }
+
+    protected async runBuildkitContainer(
+        buildkitConfig: K8sBuildkitConfig,
+        generateData: GenerateInstanceData,
+        instanceConfig: FarmJsonConfig,
+        targetImage: string,
+    ): Promise<[K8sContainerInfo, K8sContainerInfo]> {
+        const {namespace, targetRepository} = this.config;
+        const {hash, project} = generateData;
+        const {
+            env,
+            dockerfilePath = this.config.dockerfilePath,
+            k8sBuilderImage: builderImage = this.config.builderImage,
+            k8sBuilderEnvSecretName: builderEnvSecretName = this.config.builderEnvSecretName,
+            k8sBuilderResources: builderResources = this.config.builderResources,
+        } = instanceConfig;
+
+        const buildEnvVariables = {
+            ...env,
+            ...generateData.envVariables,
+        };
+        const buildArgs = Object.entries(buildEnvVariables)
+            .map(([key, value]) => `--opt build-arg:${key}='${value.replace(/'/g, "\\'")}'`)
+            .join(' ');
+
+        const buildSecretEnvVariableKeys = builderEnvSecretName
+            ? await this.readSecretKeys(builderEnvSecretName)
+            : [];
+        const buildSecrets = buildSecretEnvVariableKeys
+            .map((key) => `--secret id=${key},env=${key}`)
+            .join(' ');
+
+        const {repositoryPath, monoRepoPath} = getProjectFarmConfig(project);
+        const contextDir = buildPath(`/${TEMP_PATH}`, repositoryPath, monoRepoPath);
+        const cacheRef = `${targetRepository}/${project}:buildcache`;
+
+        const buildCommand = [
+            'buildctl-daemonless.sh build',
+            '--frontend dockerfile.v0',
+            `--local context='${contextDir}'`,
+            `--local dockerfile='${contextDir}'`,
+            '--allow network.host',
+            `--opt filename='${dockerfilePath}'`,
+            '--opt network=host',
+            `--output type=image,name=${targetImage},push=true`,
+            // TODO(DakEnviy, buildkit): Add option to configure cache mode
+            `--export-cache type=registry,ref=${cacheRef},mode=min`,
+            `--import-cache type=registry,ref=${cacheRef}`,
+            buildArgs,
+            buildSecrets,
+        ]
+            .filter(Boolean)
+            .join(' ');
+
+        const vcs = getVcs(generateData.vcs);
+
+        const builderPodSpec = this.getBuildkitPodSpec({
+            // Reuse the builder image for checkout, it carries the vcs client
+            checkoutImage: builderImage,
+            checkoutCommands: vcs.getK8sCheckoutCommands(generateData),
+            buildImage: buildkitConfig.image,
+            buildCommands: [buildCommand],
+            workspacePath: `/${TEMP_PATH}`,
+            envSecretName: builderEnvSecretName ?? undefined,
+            envVariables: buildEnvVariables,
+            resources: builderResources ?? undefined,
+        });
+
+        const {body: pod} = await this.k8sApi.createNamespacedPod(namespace, {
+            apiVersion: 'v1',
+            kind: 'Pod',
+            metadata: {
+                name: generateBuilderPodName(hash),
+                labels: {
+                    ...FARM_LABELS,
+                    type: 'builder',
+                    hash,
+                },
+                // TODO(DakEnviy): Update @kubernetes/client-node to latest version to use securityContext.appArmorProfile
+                annotations: {
+                    [`container.apparmor.security.beta.kubernetes.io/${BUILDER_CONTAINER_NAME}`]:
+                        'unconfined',
+                },
+            },
+            spec: {
+                ...builderPodSpec,
+                restartPolicy: 'Never',
+            },
+        });
+
+        return [
+            getContainerInfo(pod, CHECKOUT_CONTAINER_NAME),
+            getContainerInfo(pod, BUILDER_CONTAINER_NAME),
+        ];
     }
 
     protected async deleteBuilderContainer(hash: string): Promise<void> {
@@ -769,16 +929,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
         );
     }
 
-    protected async readContainerExitCode({
-        namespace,
-        podName,
-        containerName,
-    }: K8sContainerInfo): Promise<number> {
-        const {body: pod} = await this.k8sApi.readNamespacedPod(podName, namespace);
-
-        return getContainerExitCode(pod, containerName);
-    }
-
     protected async readContainerStatus({
         namespace,
         podName,
@@ -811,6 +961,29 @@ export class K8sFarmProvider extends BaseFarmProvider {
         }
 
         return currentStatus;
+    }
+
+    protected async readContainerExitCode({
+        namespace,
+        podName,
+        containerName,
+    }: K8sContainerInfo): Promise<number> {
+        const {body: pod} = await this.k8sApi.readNamespacedPod(podName, namespace);
+
+        return getContainerExitCode(pod, containerName);
+    }
+
+    protected async readSecretKeys(secretName: string): Promise<string[]> {
+        const {body: secret} = await this.k8sApi.readNamespacedSecret(
+            secretName,
+            this.config.namespace,
+        );
+
+        if (!secret.data) {
+            return [];
+        }
+
+        return Object.keys(secret.data);
     }
 
     protected startCleaner(): void {
@@ -934,11 +1107,17 @@ export class K8sFarmProvider extends BaseFarmProvider {
         );
     }
 
+    protected async deleteCleanerJob(): Promise<void> {
+        await this.k8sBatch
+            .deleteNamespacedCronJob(CLEANER_JOB_NAME, this.config.namespace)
+            .catch(ignoreNotFound);
+    }
+
     protected getBuilderPodSpec(
         spec: K8sBuilderPodSpec,
     ): Pick<k8s.V1PodSpec, 'containers' | 'volumes'> {
         const {dockerSocketHostPath, dockerCredsHostPath} = this.config;
-        const {containerName, image, envSecretName, resources, envVariables, commands} = spec;
+        const {containerName, image, envSecretName, envVariables, commands, resources} = spec;
 
         return {
             containers: [
@@ -948,11 +1127,11 @@ export class K8sFarmProvider extends BaseFarmProvider {
                     imagePullPolicy: 'IfNotPresent',
                     volumeMounts: [
                         {
-                            name: 'docker-socket',
+                            name: DOCKER_SOCKET_VOLUME_NAME,
                             mountPath: '/var/run/docker.sock',
                         },
                         {
-                            name: 'docker-creds',
+                            name: DOCKER_CREDS_VOLUME_NAME,
                             mountPath: '/root/.docker/config.json',
                         },
                     ],
@@ -965,19 +1144,103 @@ export class K8sFarmProvider extends BaseFarmProvider {
             ],
             volumes: [
                 {
-                    name: 'docker-socket',
+                    name: DOCKER_SOCKET_VOLUME_NAME,
                     hostPath: {
                         path: dockerSocketHostPath,
                         type: 'Socket',
                     },
                 },
                 {
-                    name: 'docker-creds',
+                    name: DOCKER_CREDS_VOLUME_NAME,
                     hostPath: {
                         path: dockerCredsHostPath,
                         type: 'File',
                     },
                 },
+            ],
+        };
+    }
+
+    protected getBuildkitPodSpec(
+        spec: K8sBuildkitPodSpec,
+    ): Pick<k8s.V1PodSpec, 'initContainers' | 'containers' | 'volumes'> {
+        const {dockerCredsHostPath} = this.config;
+        const {
+            checkoutImage,
+            checkoutCommands,
+            buildImage,
+            buildCommands,
+            workspacePath,
+            envSecretName,
+            envVariables,
+            resources,
+        } = spec;
+
+        const userHome = `/home/${BUILDKIT_USER_NAME}`;
+        const dockerConfigDir = `${userHome}/.docker`;
+
+        const workspaceMount = {name: WORKSPACE_VOLUME_NAME, mountPath: workspacePath};
+        const envFrom = envSecretName ? [{secretRef: {name: envSecretName}}] : undefined;
+
+        return {
+            initContainers: [
+                {
+                    name: CHECKOUT_CONTAINER_NAME,
+                    image: checkoutImage,
+                    imagePullPolicy: 'IfNotPresent',
+                    volumeMounts: [workspaceMount],
+                    ...(envFrom ? {envFrom} : {}),
+                    command: ['/bin/sh', '-c'],
+                    args: [['set -ex', ...checkoutCommands].join('\n')],
+                },
+            ],
+            containers: [
+                {
+                    name: BUILDER_CONTAINER_NAME,
+                    image: buildImage,
+                    imagePullPolicy: 'IfNotPresent',
+                    volumeMounts: [
+                        workspaceMount,
+                        {
+                            name: DOCKER_CREDS_VOLUME_NAME,
+                            mountPath: `${dockerConfigDir}/config.json`,
+                        },
+                        {
+                            name: BUILDKIT_STATE_VOLUME_NAME,
+                            mountPath: `${userHome}/.local/share/buildkit`,
+                        },
+                    ],
+                    ...(envFrom ? {envFrom} : {}),
+                    env: [
+                        {name: 'DOCKER_CONFIG', value: dockerConfigDir},
+                        {
+                            name: 'BUILDKITD_FLAGS',
+                            // TODO(DakEnviy, buildkit): Think about removing the usage of host network
+                            value: '--oci-worker-no-process-sandbox --allow-insecure-entitlement network.host',
+                        },
+                        ...(envVariables ? buildK8sEnvVariables(envVariables) : []),
+                    ],
+                    command: ['/bin/sh', '-c'],
+                    args: [['set -ex', ...buildCommands].join('\n')],
+                    // TODO(DakEnviy, buildkit): Add support for limits
+                    resources: resources ? {...resources, limits: undefined} : undefined,
+                    securityContext: {
+                        runAsUser: BUILDKIT_USER_ID,
+                        runAsGroup: BUILDKIT_USER_ID,
+                        seccompProfile: {type: 'Unconfined'},
+                    },
+                },
+            ],
+            volumes: [
+                {
+                    name: DOCKER_CREDS_VOLUME_NAME,
+                    hostPath: {
+                        path: dockerCredsHostPath,
+                        type: 'File',
+                    },
+                },
+                {name: BUILDKIT_STATE_VOLUME_NAME, emptyDir: {}},
+                {name: WORKSPACE_VOLUME_NAME, emptyDir: {}},
             ],
         };
     }

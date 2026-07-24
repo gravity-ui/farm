@@ -23,15 +23,23 @@
 - *Required*
 > Target Docker repository for built images.
 
+### `buildkit`
+- *Object*
+- *Optional*
+> Enables the rootless BuildKit build engine. When omitted, builds use the Docker engine (via the node Docker socket, `dockerSocketHostPath`). When present, builds run inside the builder pod via rootless BuildKit with ephemeral local storage and an external **registry** build cache, removing the dependency on the node Docker socket.
+> - `image` (*String*, required): rootless BuildKit image, e.g. `moby/buildkit:v0.16.0-rootless` or a mirror in your registry. The existing `builderImage` is still used for the source checkout init container.
+>
+> The registry cache ref is derived from `targetRepository` as `<targetRepository>/<project>:buildcache` and exported with `mode=min`. Registry credentials (for both the image push and the cache push/pull) come from the node via `dockerCredsHostPath`.
+
 ### `dockerSocketHostPath`
 - *String*
 - *Optional*
-> Host path to Docker socket for build operations.
+> Host path to Docker socket for build operations. Used only by the legacy Docker build engine (when `buildkit` is not set).
 
 ### `dockerCredsHostPath`
 - *String*
 - *Optional*
-> Host path to Docker credentials.
+> Host path to Docker credentials. Mounted into the builder for registry authentication (image push and, for the `buildkit` engine, build cache push/pull).
 
 ### `ingressClassName`
 - *String*

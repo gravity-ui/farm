@@ -16,7 +16,8 @@ export const getPodInfo = (pod: k8s.V1Pod): K8sPodInfo => {
 
 export const getContainerInfo = (pod: k8s.V1Pod, containerName: string): K8sContainerInfo => {
     const podInfo = getPodInfo(pod);
-    const container = pod.spec?.containers.find(({name}) => name === containerName);
+    const containers = [...(pod.spec?.initContainers ?? []), ...(pod.spec?.containers ?? [])];
+    const container = containers.find(({name}) => name === containerName);
 
     if (!container) {
         throw new Error(`Pod "${podInfo.podName}" does not have "${containerName}" container`);
@@ -42,10 +43,16 @@ export const getPodStatus = (pod: k8s.V1Pod): K8sPodStatus => {
 export const getContainerStatus = (pod: k8s.V1Pod, containerName: string): K8sContainerStatus => {
     let status: string = getPodStatus(pod);
 
-    const containerStatus = pod.status?.containerStatuses?.find(({name}) => name === containerName);
+    const initContainerStatuses = pod.status?.initContainerStatuses ?? [];
+    const isInitContainer = initContainerStatuses.some(({name}) => name === containerName);
+
+    const containerStatuses = [...initContainerStatuses, ...(pod.status?.containerStatuses ?? [])];
+    const containerStatus = containerStatuses.find(({name}) => name === containerName);
 
     if (containerStatus?.state?.waiting?.reason) {
         status = containerStatus?.state.waiting.reason;
+    } else if (isInitContainer && containerStatus?.state?.running) {
+        status = 'Running';
     } else if (containerStatus?.state?.running && containerStatus.ready) {
         status = 'Ready';
     } else if (containerStatus?.state?.terminated?.reason) {
@@ -60,7 +67,11 @@ export const getContainerStatus = (pod: k8s.V1Pod, containerName: string): K8sCo
 };
 
 export const getContainerExitCode = (pod: k8s.V1Pod, containerName: string) => {
-    const containerStatus = pod.status?.containerStatuses?.find(({name}) => name === containerName);
+    const containerStatuses = [
+        ...(pod.status?.initContainerStatuses ?? []),
+        ...(pod.status?.containerStatuses ?? []),
+    ];
+    const containerStatus = containerStatuses.find(({name}) => name === containerName);
 
     if (!containerStatus?.state?.terminated) {
         throw new Error(`Exit code not found for "${containerName}" container`);

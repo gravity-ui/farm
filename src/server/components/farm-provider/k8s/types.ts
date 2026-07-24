@@ -12,18 +12,33 @@ export interface K8sContainerInfo extends K8sPodInfo {
 }
 
 export interface K8sBuilderPodSpec {
+    containerName: string;
     image: string;
     envSecretName?: string;
-    resources?: k8s.V1ResourceRequirements;
-    containerName: string;
     envVariables?: Record<string, string>;
     commands: string[];
+    resources?: k8s.V1ResourceRequirements;
+}
+
+export interface K8sBuildkitPodSpec {
+    checkoutImage: string;
+    checkoutCommands: string[];
+    buildImage: string;
+    buildCommands: string[];
+    workspacePath: string;
+    envSecretName?: string;
+    envVariables?: Record<string, string>;
+    resources?: k8s.V1ResourceRequirements;
 }
 
 export interface K8sInstanceResourceNames {
     deploymentName: string;
     serviceName: string;
     ingressName: string;
+}
+
+export interface K8sBuildkitConfig {
+    image: string;
 }
 
 export interface FarmK8sProviderConfig {
@@ -41,10 +56,11 @@ export interface FarmK8sProviderConfig {
     cleanerRandomDelayMinutes?: number;
     cleanerJobsHistoryLimit?: number;
     cleanerPruneFilter?: string;
+    buildkit?: K8sBuildkitConfig | null;
 
     // Instance defaults
     dockerfilePath?: string;
-    builderImage: string;
+    builderImage: string; // TODO(DakEnviy): Move it to global settings
     builderEnvSecretName?: string | null;
     instanceEnvSecretName?: string | null;
     instancePort?: number;
