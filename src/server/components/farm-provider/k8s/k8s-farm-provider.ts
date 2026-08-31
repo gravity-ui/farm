@@ -319,8 +319,6 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 }
             });
 
-            observer.next({config: {status: 'generated'}});
-
             await wrapAsCommand(observer, 'Run instance', async () => {
                 await this.deleteInstanceContainer(hash);
                 const instanceInfo = await this.runInstanceContainer(
@@ -334,6 +332,8 @@ export class K8sFarmProvider extends BaseFarmProvider {
                     startInstanceTimeout,
                 );
             });
+
+            observer.next({config: {status: 'generated'}});
         } catch (error) {
             let normalizedError = error;
 

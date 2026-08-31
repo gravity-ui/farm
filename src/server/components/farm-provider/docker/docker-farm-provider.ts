@@ -506,7 +506,6 @@ export class DockerFarmProvider extends BaseFarmProvider {
                         duration: null,
                     },
                 ],
-                config: {status: 'generated'},
             });
             const cmd = [];
             if (startCommand) {
@@ -545,6 +544,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
                 output: [
                     {stdout: 'Done!', code: null, command: null, stderr: null, duration: null},
                 ],
+                config: {status: 'generated'},
             });
         } catch (error) {
             observer.next({config: {status: 'errored'}});
