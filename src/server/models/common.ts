@@ -17,6 +17,11 @@ export interface InstanceRow {
     description: string | null;
     labels: string | null;
     stop_timeout: number | null;
+    last_activity_at: string | null;
+}
+
+export interface StoredInstance extends Instance {
+    lastActivityAt?: number;
 }
 
 // TODO(golbahsg): Merge instance types

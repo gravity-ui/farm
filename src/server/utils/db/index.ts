@@ -1,7 +1,12 @@
 import _ from 'lodash';
 
 import type {Instance, InstanceCommonStatus, Output} from '../../../shared/common';
-import type {GenerateInstanceData, InstanceBuildLogsRow, InstanceRow} from '../../models/common';
+import type {
+    GenerateInstanceData,
+    InstanceBuildLogsRow,
+    InstanceRow,
+    StoredInstance,
+} from '../../models/common';
 import {getCurrentTime} from '../common';
 
 import {knexInstance} from './knex';
@@ -136,7 +141,24 @@ export async function updateInstanceStatus(
     await knexInstance('instances').where({hash}).update({status});
 }
 
-export async function getInstance(hash: string): Promise<Instance | undefined> {
+export async function updateInstanceLastActivityAt(
+    hash: string,
+    debounceMs: number,
+): Promise<boolean> {
+    const now = Date.now();
+    const updatedRows = await knexInstance('instances')
+        .where({hash})
+        .where((builder) =>
+            builder
+                .whereNull('last_activity_at')
+                .orWhere('last_activity_at', '<', String(now - debounceMs)),
+        )
+        .update({last_activity_at: String(now)});
+
+    return updatedRows > 0;
+}
+
+export async function getInstance(hash: string): Promise<StoredInstance | undefined> {
     const result = await knexInstance('instances').select().where({hash}).first();
 
     if (!result) {
@@ -157,6 +179,7 @@ export async function getInstance(hash: string): Promise<Instance | undefined> {
         labels: result.labels ? JSON.parse(result.labels) : {},
         description: result.description || '',
         stopTimeout: result.stop_timeout || undefined,
+        lastActivityAt: result.last_activity_at ? Number(result.last_activity_at) : undefined,
     };
 }
 

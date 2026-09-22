@@ -341,6 +341,30 @@ Starts the specified instance.
 {}
 ```
 
+#### touchInstance
+
+Records instance activity for idle timeout calculation. Repeated calls are persisted at most once a minute.
+Healthcheck activity is accepted but ignored.
+
+**Method**: `POST`
+
+**Action**: `touchInstance`
+
+**Body**
+
+```typescript
+{
+    hash: string;
+    source: 'user' | 'test' | 'healthcheck';
+}
+```
+
+**Response**
+
+```typescript
+{}
+```
+
 #### getInstanceProviderStatus
 
 Gets the instance status from the provider.

@@ -341,6 +341,30 @@ API Farm предоставляет интерфейс для управлени
 {}
 ```
 
+#### touchInstance
+
+Регистрирует активность инстанса для расчёта времени простоя. Повторные вызовы записываются не чаще раза в минуту.
+Активность healthcheck принимается, но игнорируется.
+
+**Method**: `POST`
+
+**Action**: `touchInstance`
+
+**Body**
+
+```typescript
+{
+    hash: string;
+    source: 'user' | 'test' | 'healthcheck';
+}
+```
+
+**Response**
+
+```typescript
+{}
+```
+
 #### getInstanceProviderStatus
 
 Получает статус инстанса от провайдера.
