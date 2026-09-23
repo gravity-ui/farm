@@ -12,6 +12,7 @@ import {sendStats} from '../utils/stats';
 const schema = z.object({
     project: z.string(),
     branch: z.string(),
+    commit: z.string().optional(),
     vcs: z.string(),
     description: z.string().optional(),
     urlTemplate: z.string().optional(),
@@ -32,6 +33,7 @@ const generate = async (req: Request, res: Response) => {
     const {
         project,
         branch,
+        commit,
         description,
         urlTemplate,
         vcs,
@@ -76,6 +78,7 @@ const generate = async (req: Request, res: Response) => {
     const configFile = await fetchProjectConfig({
         project,
         branch,
+        commit,
         vcs,
     });
 
@@ -102,6 +105,7 @@ const generate = async (req: Request, res: Response) => {
         .addInstanceToGenerateQueue({
             project,
             branch,
+            commit,
             description,
             envVariables: finalEnvVariables,
             runEnvVariables: finalRunEnvVariables,

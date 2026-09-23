@@ -14,6 +14,7 @@ export async function insertInstance(
     await knexInstance('instances').insert({
         project: instance.project,
         branch: instance.branch,
+        commit: instance.commit ?? null,
         vcs: instance.vcs,
         url_template: instance.urlTemplate ?? null,
         env_variables: instance.envVariables ? JSON.stringify(instance.envVariables) : null,
@@ -52,6 +53,7 @@ export async function insertInstanceLogs(hash: string, logs: Output[]): Promise<
 
 const mapInstanceRow = (row: InstanceRow): Instance => ({
     branch: row.branch,
+    commit: row.commit || undefined,
     project: row.project,
     vcs: row.vcs,
     urlTemplate: row.url_template || undefined,
@@ -147,6 +149,7 @@ export async function getInstance(hash: string): Promise<Instance | undefined> {
         instanceConfigName: result.instance_config_name,
         project: result.project,
         branch: result.branch,
+        commit: result.commit || undefined,
         vcs: result.vcs,
         urlTemplate: result.url_template || undefined,
         status: result.status,

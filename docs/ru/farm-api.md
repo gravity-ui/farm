@@ -16,6 +16,7 @@ API Farm предоставляет интерфейс для управлени
 {
     project: string;
     branch: string;
+    commit?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;
@@ -25,6 +26,10 @@ API Farm предоставляет интерфейс для управлени
     [key: string]: unknown;
 }
 ```
+
+`commit` — необязательный полный хеш коммита Git или Arc. Он задаёт ревизию исходников и
+конфигурации для checkout, но не влияет на хеш и URL инстанса. Без него Farm, как и раньше,
+использует `branch`.
 
 **Response**
 
@@ -453,6 +458,7 @@ API Farm предоставляет интерфейс для управлени
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
     instanceConfigName: string;
 }
 ```
@@ -480,6 +486,7 @@ API Farm предоставляет интерфейс для управлени
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
 }
 ```
 
@@ -543,6 +550,7 @@ hash: string
 ```typescript
 {
     branch: string;
+    commit?: string;
     vcs: string;
     project: string;
     createdAt: string;

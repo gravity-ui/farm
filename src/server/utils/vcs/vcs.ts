@@ -6,18 +6,21 @@ import type {FarmProjectConfig} from '../farmJsonConfig';
 export interface VcsCheckoutProps {
     project: string;
     branch: string;
+    commit?: string;
     instanceDir: string;
 }
 
 export interface VcsGetK8sCheckoutCommands {
     project: string;
     branch: string;
+    commit?: string;
 }
 
 export interface CommonPullRequestData {
     action: 'opened' | 'closed';
     project: string;
     branch: string;
+    commit?: string;
     title: string;
     description: string;
     includedConfigNames?: string;
@@ -30,6 +33,17 @@ export interface CommonPullRequestData {
 }
 
 export type GetProjectConfigParams = VcsGetK8sCheckoutCommands;
+
+export function getCheckoutRef({
+    branch,
+    commit,
+}: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>) {
+    if (commit && !/^(?:[a-f\d]{40}|[a-f\d]{64})$/i.test(commit)) {
+        throw new Error('Commit must be a full hexadecimal hash');
+    }
+
+    return commit || branch;
+}
 
 export interface Vcs {
     startup(): Promise<void>;

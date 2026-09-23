@@ -6,6 +6,7 @@ import type {Instance, InstanceCommonStatus, Output, User} from '../../shared/co
 export interface InstanceRow {
     project: string;
     branch: string;
+    commit: string | null;
     status: InstanceCommonStatus;
     instance_config_name: string;
     created: string;
@@ -25,6 +26,7 @@ export interface InstanceInfo {
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
     description?: string;
     urlTemplate?: string;
     instanceConfigName: string;

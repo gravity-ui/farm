@@ -3,6 +3,7 @@
   "hash": "Хеш",
   "project": "Проект",
   "branch": "Ветка",
+  "commit": "Коммит",
   "url": "URL",
   "updated-at": "Обновлено",
   "created-at": "Создано",

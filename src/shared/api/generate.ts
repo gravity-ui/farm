@@ -1,6 +1,7 @@
 export type GenerateInstanceRequest = {
     project: string;
     branch: string;
+    commit?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;

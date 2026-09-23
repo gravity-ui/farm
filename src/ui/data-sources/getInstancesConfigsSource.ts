@@ -7,14 +7,14 @@ import type {
 import {makePlainQueryDataSource} from '../components/data-source';
 import api from '../services/api';
 
-const fetch = skipContext(async ({project, branch, vcs}: GetInstancesConfigsRequest) => {
+const fetch = skipContext(async ({project, branch, commit, vcs}: GetInstancesConfigsRequest) => {
     if (!project || !branch || !vcs) {
         return [];
     }
 
     const {configs} = await api.request<GetInstancesConfigsRequest, GetInstancesConfigsResponse>({
         action: 'getInstancesConfigs',
-        data: {project, vcs, branch},
+        data: {project, vcs, branch, commit},
     });
 
     return configs;
