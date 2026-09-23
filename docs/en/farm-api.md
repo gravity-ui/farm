@@ -341,6 +341,28 @@ Starts the specified instance.
 {}
 ```
 
+#### touchInstance
+
+Records instance activity for idle timeout calculation when `instanceActivityTrackingEnabled` is enabled. Otherwise the action succeeds without updating activity. The caller must exclude health checks and limit the request rate.
+
+**Method**: `POST`
+
+**Action**: `touchInstance`
+
+**Body**
+
+```typescript
+{
+    hash: string;
+}
+```
+
+**Response**
+
+```typescript
+{}
+```
+
 #### getInstanceProviderStatus
 
 Gets the instance status from the provider.
@@ -555,6 +577,7 @@ hash: string
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
+    lastActivityAt?: number;
 }
 ```
 

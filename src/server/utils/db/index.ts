@@ -68,6 +68,7 @@ const mapInstanceRow = (row: InstanceRow): Instance => ({
         ? undefined
         : JSON.parse(row.run_env_variables as string),
     stopTimeout: row.stop_timeout || undefined,
+    lastActivityAt: row.last_activity_at ? Number(row.last_activity_at) : undefined,
 });
 
 export async function listInstances(): Promise<Instance[]> {
@@ -136,6 +137,12 @@ export async function updateInstanceStatus(
     await knexInstance('instances').where({hash}).update({status});
 }
 
+export async function updateInstanceLastActivityAt(hash: string): Promise<void> {
+    await knexInstance('instances')
+        .where({hash})
+        .update({last_activity_at: String(Date.now())});
+}
+
 export async function getInstance(hash: string): Promise<Instance | undefined> {
     const result = await knexInstance('instances').select().where({hash}).first();
 
@@ -157,6 +164,7 @@ export async function getInstance(hash: string): Promise<Instance | undefined> {
         labels: result.labels ? JSON.parse(result.labels) : {},
         description: result.description || '',
         stopTimeout: result.stop_timeout || undefined,
+        lastActivityAt: result.last_activity_at ? Number(result.last_activity_at) : undefined,
     };
 }
 
