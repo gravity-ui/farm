@@ -2,6 +2,7 @@ import type {Request, Response} from '@gravity-ui/expresskit';
 import {z} from 'zod';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
+import {isCommitHash} from '../../shared/commit';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 import {filterEmptyObjectEntries, generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
@@ -12,7 +13,7 @@ import {sendStats} from '../utils/stats';
 const schema = z.object({
     project: z.string(),
     branch: z.string(),
-    commit: z.string().optional(),
+    commit: z.string().refine(isCommitHash).optional(),
     vcs: z.string(),
     description: z.string().optional(),
     urlTemplate: z.string().optional(),

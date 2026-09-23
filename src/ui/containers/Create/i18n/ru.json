@@ -1,6 +1,7 @@
 {
   "create-title": "Создание инстанса",
   "clone-title": "Клонирование инстанса",
+  "commit-invalid": "Введите полный хеш коммита",
   "success-delete-original-instance-title": "Старый инстанс удален",
   "success-delete-original-instance-description": "Старый инстанс {{hash}} успешно удален"
 }

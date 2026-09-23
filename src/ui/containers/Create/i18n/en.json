@@ -1,6 +1,7 @@
 {
   "create-title": "Create instance",
   "clone-title": "Clone instance",
+  "commit-invalid": "Enter a full hexadecimal commit hash",
   "success-delete-original-instance-title": "Old instance deleted",
   "success-delete-original-instance-description": "Old instance {{hash}} successfully deleted"
 }

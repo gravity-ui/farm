@@ -18,6 +18,7 @@ require('ts-node/register');
 const {generateInstanceHash} = require('../src/server/utils/common.ts');
 const {GitVcs} = require('../src/server/utils/vcs/git.ts');
 const {getCheckoutRef} = require('../src/server/utils/vcs/vcs.ts');
+const {isCommitHash} = require('../src/shared/commit.ts');
 const commitMigration = require('../src/server/utils/db/migrations/20260923000000_add_commit.ts');
 
 const firstCommit = 'da39c776388d1e17f9d70eeb098d5f56a90630b2';
@@ -35,6 +36,8 @@ test('commit changes checkout ref but not instance hash', () => {
 
     assert.equal(getCheckoutRef({branch: identity.branch}), identity.branch);
     assert.equal(getCheckoutRef({branch: identity.branch, commit: firstCommit}), firstCommit);
+    assert.equal(isCommitHash(firstCommit), true);
+    assert.equal(isCommitHash(firstCommit.slice(0, -1)), false);
     assert.equal(
         generateInstanceHash({...identity, commit: firstCommit}),
         generateInstanceHash({...identity, commit: secondCommit}),
