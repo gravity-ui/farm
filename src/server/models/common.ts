@@ -20,10 +20,6 @@ export interface InstanceRow {
     last_activity_at: string | null;
 }
 
-export interface StoredInstance extends Instance {
-    lastActivityAt?: number;
-}
-
 // TODO(golbahsg): Merge instance types
 export interface InstanceInfo {
     hash?: string;

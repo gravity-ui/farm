@@ -24,6 +24,7 @@ export interface Instance {
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
+    lastActivityAt?: number;
 }
 
 export interface InstanceWithProviderStatus extends Instance {
@@ -64,6 +65,7 @@ export interface FarmConfigBase {
      * Instance life before stop in ms.
      */
     instanceStopTimeout?: number;
+    instanceActivityTrackingEnabled?: boolean;
     /**
      * Instance life before deletion in ms.
      *

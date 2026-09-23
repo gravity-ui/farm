@@ -22,7 +22,12 @@ Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
 ### `instanceStopTimeout`
 - *Number*
 - *Optional*
-> Ms time after which instance will be stopped. Default is 1 hour. Recording user or test activity through `touchInstance` restarts this timer. Repeated activity is persisted at most once a minute. Internal healthchecks do not affect it. This value is used if a specific instance does not have its own `stopTimeout` set. If set to `-1`, instances will live forever (automatic stopping is disabled).
+> Ms time after which instance will be stopped. Default is 1 hour. When `instanceActivityTrackingEnabled` is true, activity recorded through `touchInstance` restarts this timer. This value is used if a specific instance does not have its own `stopTimeout` set. If set to `-1`, instances will live forever (automatic stopping is disabled).
+
+### `instanceActivityTrackingEnabled`
+- *Boolean*
+- *Optional*
+> Enables activity-based stopping. Defaults to `false`. When disabled, `touchInstance` does not update activity and the stop timer uses only the provider's process start time. The request-routing layer must send activity signals only for eligible traffic and exclude health checks.
 
 ### `instanceDeleteTimeout`
 - *Number*

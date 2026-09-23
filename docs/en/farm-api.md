@@ -343,8 +343,7 @@ Starts the specified instance.
 
 #### touchInstance
 
-Records instance activity for idle timeout calculation. Repeated calls are persisted at most once a minute.
-Healthcheck activity is accepted but ignored.
+Records instance activity for idle timeout calculation when `instanceActivityTrackingEnabled` is enabled. Otherwise the action succeeds without updating activity. The caller must exclude health checks and limit the request rate.
 
 **Method**: `POST`
 
@@ -355,7 +354,6 @@ Healthcheck activity is accepted but ignored.
 ```typescript
 {
     hash: string;
-    source: 'user' | 'test' | 'healthcheck';
 }
 ```
 
@@ -579,6 +577,7 @@ hash: string
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
+    lastActivityAt?: number;
 }
 ```
 

@@ -1,20 +1,19 @@
 import type {TouchInstanceRequest, TouchInstanceResponse} from '../../../shared/api/touchInstance';
 import type {ApiAction} from '../../../shared/common';
+import {getGlobalFarmConfig} from '../../utils/common';
 import * as db from '../../utils/db';
 
-const ACTIVITY_DEBOUNCE_MS = 60_000;
-
 const touchInstance: ApiAction<TouchInstanceRequest, TouchInstanceResponse> = async ({data}) => {
-    if (data.source === 'healthcheck') {
+    if (!getGlobalFarmConfig().instanceActivityTrackingEnabled) {
         return {ok: true};
     }
 
-    if (data.source !== 'user' && data.source !== 'test') {
-        return {ok: false, message: 'Unknown activity source', status: 400};
+    if (!data.hash || typeof data.hash !== 'string') {
+        return {ok: false, message: 'Instance hash is required', status: 400};
     }
 
     try {
-        await db.updateInstanceLastActivityAt(data.hash, ACTIVITY_DEBOUNCE_MS);
+        await db.updateInstanceLastActivityAt(data.hash);
 
         return {ok: true};
     } catch (error) {

@@ -15,6 +15,8 @@ const Locker = {
 
 const globalInstanceStopTimeout = getGlobalFarmConfig().instanceStopTimeout ?? ms('1h');
 const globalInstanceDeleteTimeout = getGlobalFarmConfig().instanceDeleteTimeout ?? ms('30d');
+const instanceActivityTrackingEnabled =
+    getGlobalFarmConfig().instanceActivityTrackingEnabled ?? false;
 
 export const isTimeout = (now: number, time: number, timeout: number) => {
     const diff = now - time;
@@ -41,10 +43,9 @@ const stopInstances = async () => {
         for (const process of runningInstances) {
             const instance = await db.getInstance(process.hash);
             const instanceStopTimeout = instance?.stopTimeout || globalInstanceStopTimeout;
-            const instanceStopTimerStart = Math.max(
-                Number(process.startTime),
-                instance?.lastActivityAt ?? 0,
-            );
+            const instanceStopTimerStart = instanceActivityTrackingEnabled
+                ? Math.max(Number(process.startTime), instance?.lastActivityAt ?? 0)
+                : Number(process.startTime);
 
             // if `instanceStopTimeout` < building time: then will call `stopInstance` before finishing build.
             if (
