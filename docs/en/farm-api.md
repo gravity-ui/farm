@@ -27,7 +27,7 @@ Creates a new instance.
 }
 ```
 
-`commit` is an optional full Git or Arc commit hash. It selects the source and configuration
+`commit` is an optional full commit hash. It selects the source and configuration
 revision for checkout but does not affect the instance hash or URL. Without it, Farm checks out
 `branch` as before.
 
