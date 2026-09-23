@@ -61,6 +61,11 @@ export const BaseView: React.FC<BaseViewProps> = ({instance}) => {
             <DefinitionList.Item name={i18nInstance('branch')} copyText={instance.branch}>
                 {instance.branch}
             </DefinitionList.Item>
+            {instance.commit && (
+                <DefinitionList.Item name={i18nInstance('commit')} copyText={instance.commit}>
+                    {instance.commit}
+                </DefinitionList.Item>
+            )}
             <DefinitionList.Item name={i18nInstance('url')} copyText={url}>
                 <Link href={url}>{url}</Link>
             </DefinitionList.Item>

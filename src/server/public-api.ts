@@ -37,6 +37,7 @@ export {HealthcheckManager} from './utils/healthcheck';
 export {ping} from './utils/ping';
 export {normalizeInstanceProviderStatus} from './utils/status';
 export {getVcs} from './utils/vcs';
+export {getCheckoutRef} from './utils/vcs/vcs';
 export type {
     Vcs,
     VcsGetK8sCheckoutCommands,

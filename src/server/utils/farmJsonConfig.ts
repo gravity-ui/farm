@@ -10,6 +10,7 @@ import type {DockerInstanceHealthcheck} from '../components/farm-provider/docker
 
 import {fileExists, readFile} from './files';
 import {getVcs} from './vcs';
+import {getCheckoutRef} from './vcs/vcs';
 
 // TODO(golbahsg): Replace `string` with `string[]`, following the pattern of docker and k8s
 export interface FarmFileStartConfig {
@@ -140,6 +141,7 @@ export interface FetchProjectConfigParams {
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
 }
 
 /**
@@ -152,7 +154,8 @@ const configCache = new LRUCache<string, string>({
 });
 
 export async function fetchProjectConfig(params: FetchProjectConfigParams) {
-    const cacheKey = `${params.project}_${params.branch}`;
+    const checkoutRef = getCheckoutRef(params);
+    const cacheKey = `${params.vcs}_${params.project}_${checkoutRef}`;
     const cache = configCache.get(cacheKey);
     if (cache) {
         return JSON.parse(cache) as FormattedProjectFarmJsonConfig;
@@ -162,8 +165,8 @@ export async function fetchProjectConfig(params: FetchProjectConfigParams) {
         throw new Error(`Failed to fetch project config. Unknown vcs: ${params.vcs}`);
     }
 
-    const {project, branch} = params;
-    const result = formatProjectConfig(await vcs.getProjectConfig({project, branch}));
+    const {project, branch, commit} = params;
+    const result = formatProjectConfig(await vcs.getProjectConfig({project, branch, commit}));
     configCache.set(cacheKey, JSON.stringify(result));
     return result;
 }

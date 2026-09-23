@@ -16,6 +16,7 @@ import type {
     VcsCheckoutProps,
     VcsGetK8sCheckoutCommands,
 } from './vcs';
+import {getCheckoutRef} from './vcs';
 
 const defaultHostname = 'github.com';
 const defaultWebhookEventNameHeader = 'x-github-event';
@@ -25,15 +26,23 @@ export class GitVcs implements Vcs {
         return Promise.resolve();
     }
 
-    async checkout({project, branch, instanceDir}: VcsCheckoutProps) {
+    async checkout({project, branch, commit, instanceDir}: VcsCheckoutProps) {
         const {repositoryPath, vcsCredentials} = getProjectFarmConfig(project);
         const vcsConfig = vcsCredentials?.git ?? {};
         const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
+        const checkoutRef = getCheckoutRef({branch, commit});
 
         const targetDir = `${WORKDIR_PATH}/${instanceDir}`;
         let command = `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${targetDir}`;
 
-        if (branch.startsWith('pull/')) {
+        if (commit) {
+            command = `
+                git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${targetDir} &&
+                cd ${targetDir} &&
+                git fetch --depth 1 origin ${checkoutRef} &&
+                git checkout --detach ${checkoutRef}
+            `;
+        } else if (branch.startsWith('pull/')) {
             command = `
                 git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${targetDir} &&
                 cd ${targetDir} &&
@@ -54,16 +63,28 @@ export class GitVcs implements Vcs {
         return output;
     }
 
-    getK8sCheckoutCommands({project, branch}: VcsGetK8sCheckoutCommands): string[] {
+    getK8sCheckoutCommands({project, branch, commit}: VcsGetK8sCheckoutCommands): string[] {
         const {repositoryPath, monoRepoPath, vcsCredentials} = getProjectFarmConfig(project);
         const vcsConfig = vcsCredentials?.git ?? {};
         const instancePath = buildPath(repositoryPath, monoRepoPath);
         const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
+        const checkoutRef = getCheckoutRef({branch, commit});
 
         return [
             `mkdir -p /${TEMP_PATH}`,
             `cd /${TEMP_PATH}`,
-            `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`,
+            `mkdir -p '${repositoryPath}'`,
+            commit
+                ? `git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`
+                : `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`,
+            ...(commit
+                ? [
+                      `cd '${repositoryPath}'`,
+                      `git fetch --depth 1 origin ${checkoutRef}`,
+                      `git checkout --detach ${checkoutRef}`,
+                      `cd /${TEMP_PATH}`,
+                  ]
+                : []),
             `cd '${instancePath}'`,
         ];
     }
@@ -74,7 +95,7 @@ export class GitVcs implements Vcs {
             pull_request: {
                 title: string;
                 body: string;
-                head: {ref: string};
+                head: {ref: string; sha?: string};
                 base: {ref: string};
                 number: number;
                 user: {login: string};
@@ -121,6 +142,7 @@ export class GitVcs implements Vcs {
             action: normalizedAction,
             project,
             branch,
+            commit: data.pull_request.head.sha,
             title,
             description,
             webhookActionParameters: {
@@ -169,12 +191,13 @@ export class GitVcs implements Vcs {
     getProjectConfig = async ({
         project,
         branch,
+        commit,
     }: GetProjectConfigParams): Promise<FarmProjectConfig> => {
         const {monoRepoPath} = getProjectFarmConfig(project);
-        const tempDir = branch + getRandom();
+        const tempDir = getCheckoutRef({branch, commit}) + getRandom();
 
         try {
-            await this.checkout({project, branch, instanceDir: tempDir});
+            await this.checkout({project, branch, commit, instanceDir: tempDir});
 
             let configFilePath = buildPath(WORKDIR_PATH, tempDir, monoRepoPath, 'farm.json');
             if (!nodeFs.existsSync(configFilePath)) {

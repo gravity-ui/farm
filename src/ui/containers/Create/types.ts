@@ -10,6 +10,7 @@ export type FormValue = Required<
         Instance,
         'project' | 'branch' | 'description' | 'urlTemplate' | 'vcs' | 'instanceConfigName'
     > & {
+        commit: string;
         variables: QSVariables[];
         runVariables: QSVariables[];
         labels: QSVariables[];

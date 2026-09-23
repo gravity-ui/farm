@@ -165,6 +165,7 @@ export const useInstanceActions = () => {
             project: instance.project,
             vcs: instance.vcs,
             branch: instance.branch,
+            commit: instance.commit,
             description: instance.description,
             instanceConfigName: instance.instanceConfigName,
             urlTemplate: instance.urlTemplate,

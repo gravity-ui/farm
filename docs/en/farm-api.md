@@ -16,6 +16,7 @@ Creates a new instance.
 {
     project: string;
     branch: string;
+    commit?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;
@@ -25,6 +26,10 @@ Creates a new instance.
     [key: string]: unknown;
 }
 ```
+
+`commit` is an optional full commit hash. It selects the source and configuration
+revision for checkout but does not affect the instance hash or URL. Without it, Farm checks out
+`branch` as before.
 
 **Response**
 
@@ -453,6 +458,7 @@ Gets the instance configuration.
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
     instanceConfigName: string;
 }
 ```
@@ -480,6 +486,7 @@ Gets a list of instance configuration names.
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
 }
 ```
 
@@ -543,6 +550,7 @@ hash: string
 ```typescript
 {
     branch: string;
+    commit?: string;
     vcs: string;
     project: string;
     createdAt: string;

@@ -2,6 +2,7 @@ import type {Request, Response} from '@gravity-ui/expresskit';
 import {z} from 'zod';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
+import {isCommitHash} from '../../shared/commit';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 import {filterEmptyObjectEntries, generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
@@ -12,6 +13,7 @@ import {sendStats} from '../utils/stats';
 const schema = z.object({
     project: z.string(),
     branch: z.string(),
+    commit: z.string().refine(isCommitHash).optional(),
     vcs: z.string(),
     description: z.string().optional(),
     urlTemplate: z.string().optional(),
@@ -32,6 +34,7 @@ const generate = async (req: Request, res: Response) => {
     const {
         project,
         branch,
+        commit,
         description,
         urlTemplate,
         vcs,
@@ -76,6 +79,7 @@ const generate = async (req: Request, res: Response) => {
     const configFile = await fetchProjectConfig({
         project,
         branch,
+        commit,
         vcs,
     });
 
@@ -102,6 +106,7 @@ const generate = async (req: Request, res: Response) => {
         .addInstanceToGenerateQueue({
             project,
             branch,
+            commit,
             description,
             envVariables: finalEnvVariables,
             runEnvVariables: finalRunEnvVariables,

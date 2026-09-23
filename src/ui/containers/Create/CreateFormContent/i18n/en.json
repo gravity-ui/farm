@@ -1,6 +1,7 @@
 {
   "project-name": "Project name",
-  "branch": "Branch or commit",
+  "branch": "Branch",
+  "commit": "Commit (optional)",
   "description": "Description",
   "url-template": "URL template",
   "instance-config": "Instance config",

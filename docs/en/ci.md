@@ -14,7 +14,8 @@ curl -X POST "https://farm.domain/webhook" \
     "title": "feat: add new feature",
     "body": "This PR adds a new feature to the application",
     "head": {
-      "ref": "feature/new-feature"
+      "ref": "feature/new-feature",
+      "sha": "da39c776388d1e17f9d70eeb098d5f56a90630b2"
     },
     "base": {
       "ref": "main"
@@ -31,3 +32,6 @@ curl -X POST "https://farm.domain/webhook" \
 ```
 
 It should be clarified that the event header may vary in different systems. It should be specified in the configuration, details in the [`Farm configuration`](./farm-config-json.md) description in the `vcsCredentials` section.
+
+The optional commit pins checkout and configuration loading to an exact revision. The branch
+continues to determine instance identity, so a new commit can rebuild the same instance URL.
