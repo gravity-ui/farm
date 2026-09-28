@@ -10,10 +10,12 @@ import type {Stats} from '../utils/stats';
 import {sendStats} from '../utils/stats';
 import {getVcs} from '../utils/vcs';
 
+const invalidCommitMessage = 'Invalid commit parameter';
+
 const schema = z.object({
     project: z.string(),
     branch: z.string(),
-    commit: z.string().optional(),
+    commit: z.string().min(1).optional(),
     vcs: z.string(),
     description: z.string().optional(),
     urlTemplate: z.string().optional(),
@@ -27,7 +29,11 @@ const generate = async (req: Request, res: Response) => {
 
     if (!parsed.success) {
         req.ctx.logError('invalid generate request', wrapInternalError(parsed.error));
-        res.sendStatus(400);
+        if (parsed.error.issues.some(({path}) => path[0] === 'commit')) {
+            res.status(400).send({message: invalidCommitMessage});
+        } else {
+            res.sendStatus(400);
+        }
         return;
     }
 
@@ -45,7 +51,7 @@ const generate = async (req: Request, res: Response) => {
     } = parsed.data;
 
     if (commit !== undefined && getVcs(vcs).isValidRef?.(commit) === false) {
-        res.sendStatus(400);
+        res.status(400).send({message: invalidCommitMessage});
         return;
     }
 

@@ -132,6 +132,7 @@ test('custom VCS accepts its revision through generation and config lookup', asy
     };
     const res = {
         send: (body) => generated.push(body),
+        status: (status) => ({send: (body) => generated.push({status, ...body})}),
         sendStatus: (status) => generated.push({status}),
     };
     await generate(req, res);
@@ -151,22 +152,28 @@ test('custom VCS accepts its revision through generation and config lookup', asy
 
     req.body.commit = 'invalid';
     await generate(req, res);
-    assert.deepEqual(generated[2], {status: 400});
+    assert.deepEqual(generated[2], {status: 400, message: 'Invalid commit parameter'});
 });
 
 test('Git rejects invalid commit with 400 before config lookup', async () => {
     coreRegistry.vcs.setInstance('git', new GitVcs());
-    const statuses = [];
+    const responses = [];
     for (const commit of ['revision:42', '']) {
         await generate(
             {
                 body: {project: 'sample', branch: 'feature', vcs: 'git', commit},
                 ctx: {logError: () => undefined},
             },
-            {sendStatus: (status) => statuses.push(status)},
+            {
+                status: (status) => ({send: (body) => responses.push({status, ...body})}),
+                sendStatus: (status) => responses.push({status}),
+            },
         );
     }
-    assert.deepEqual(statuses, [400, 400]);
+    assert.deepEqual(responses, [
+        {status: 400, message: 'Invalid commit parameter'},
+        {status: 400, message: 'Invalid commit parameter'},
+    ]);
 });
 
 test('Git pull request webhook records its head commit', () => {
