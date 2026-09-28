@@ -154,15 +154,12 @@ const configCache = new LRUCache<string, string>({
 });
 
 export async function fetchProjectConfig(params: FetchProjectConfigParams) {
-    const checkoutRef = getCheckoutRef(params);
+    const vcs = getVcs(params.vcs);
+    const checkoutRef = vcs.getCheckoutRef?.(params) ?? getCheckoutRef(params);
     const cacheKey = `${params.vcs}_${params.project}_${checkoutRef}`;
     const cache = configCache.get(cacheKey);
     if (cache) {
         return JSON.parse(cache) as FormattedProjectFarmJsonConfig;
-    }
-    const vcs = getVcs(params.vcs);
-    if (!vcs) {
-        throw new Error(`Failed to fetch project config. Unknown vcs: ${params.vcs}`);
     }
 
     const {project, branch, commit} = params;

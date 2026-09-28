@@ -2,6 +2,7 @@ import nodeFs from 'node:fs';
 
 import type {Request} from '@gravity-ui/expresskit';
 
+import {isCommitHash} from '../../../shared/commit';
 import type {Output, VcsCredentialsConfig} from '../../../shared/common';
 import {TEMP_PATH, WORKDIR_PATH} from '../../constants';
 import {executeRun} from '../async';
@@ -26,11 +27,23 @@ export class GitVcs implements Vcs {
         return Promise.resolve();
     }
 
+    getCheckoutRef({branch, commit}: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>): string {
+        if (commit !== undefined && !this.isValidRef(commit)) {
+            throw new Error('Commit must be a full hexadecimal hash');
+        }
+
+        return getCheckoutRef({branch, commit});
+    }
+
+    isValidRef(ref: string): boolean {
+        return isCommitHash(ref);
+    }
+
     async checkout({project, branch, commit, instanceDir}: VcsCheckoutProps) {
         const {repositoryPath, vcsCredentials} = getProjectFarmConfig(project);
         const vcsConfig = vcsCredentials?.git ?? {};
         const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
-        const checkoutRef = getCheckoutRef({branch, commit});
+        const checkoutRef = this.getCheckoutRef({branch, commit});
 
         const targetDir = `${WORKDIR_PATH}/${instanceDir}`;
         let command = `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${targetDir}`;
@@ -68,7 +81,7 @@ export class GitVcs implements Vcs {
         const vcsConfig = vcsCredentials?.git ?? {};
         const instancePath = buildPath(repositoryPath, monoRepoPath);
         const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
-        const checkoutRef = getCheckoutRef({branch, commit});
+        const checkoutRef = this.getCheckoutRef({branch, commit});
 
         return [
             `mkdir -p /${TEMP_PATH}`,
@@ -194,7 +207,7 @@ export class GitVcs implements Vcs {
         commit,
     }: GetProjectConfigParams): Promise<FarmProjectConfig> => {
         const {monoRepoPath} = getProjectFarmConfig(project);
-        const tempDir = getCheckoutRef({branch, commit}) + getRandom();
+        const tempDir = this.getCheckoutRef({branch, commit}) + getRandom();
 
         try {
             await this.checkout({project, branch, commit, instanceDir: tempDir});

@@ -2,18 +2,18 @@ import type {Request, Response} from '@gravity-ui/expresskit';
 import {z} from 'zod';
 
 import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
-import {isCommitHash} from '../../shared/commit';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 import {filterEmptyObjectEntries, generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
 import * as instanceUtils from '../utils/instance';
 import type {Stats} from '../utils/stats';
 import {sendStats} from '../utils/stats';
+import {getVcs} from '../utils/vcs';
 
 const schema = z.object({
     project: z.string(),
     branch: z.string(),
-    commit: z.string().refine(isCommitHash).optional(),
+    commit: z.string().optional(),
     vcs: z.string(),
     description: z.string().optional(),
     urlTemplate: z.string().optional(),
@@ -43,6 +43,11 @@ const generate = async (req: Request, res: Response) => {
         stopTimeout,
         ...restParameters
     } = parsed.data;
+
+    if (commit !== undefined && getVcs(vcs).isValidRef?.(commit) === false) {
+        res.sendStatus(400);
+        return;
+    }
 
     const envVariables: Record<string, string> = {};
     const runEnvVariables: Record<string, string> = {};

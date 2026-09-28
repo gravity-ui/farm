@@ -1,6 +1,5 @@
 import type {Request} from '@gravity-ui/expresskit';
 
-import {isCommitHash} from '../../../shared/commit';
 import type {Output} from '../../../shared/common';
 import type {FarmProjectConfig} from '../farmJsonConfig';
 
@@ -39,15 +38,14 @@ export function getCheckoutRef({
     branch,
     commit,
 }: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>) {
-    if (commit && !isCommitHash(commit)) {
-        throw new Error('Commit must be a full hexadecimal hash');
-    }
-
     return commit || branch;
 }
 
 export interface Vcs {
     startup(): Promise<void>;
+
+    getCheckoutRef?(params: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>): string;
+    isValidRef?(ref: string): boolean;
 
     checkout(params: VcsCheckoutProps): Promise<Output[]>;
     getK8sCheckoutCommands(params: VcsGetK8sCheckoutCommands): string[];

@@ -4,12 +4,12 @@ import type {
     GetInstancesConfigsRequest,
     GetInstancesConfigsResponse,
 } from '../../shared/api/getInstancesConfigs';
-import {isCommitHash} from '../../shared/commit';
 import {makePlainQueryDataSource} from '../components/data-source';
 import api from '../services/api';
+import {isValidCommitForVcs} from '../utils/commit';
 
 const fetch = skipContext(async ({project, branch, commit, vcs}: GetInstancesConfigsRequest) => {
-    if (!project || !branch || !vcs || (commit && !isCommitHash(commit))) {
+    if (!project || !branch || !vcs || (commit && !isValidCommitForVcs(vcs, commit))) {
         return [];
     }
 
