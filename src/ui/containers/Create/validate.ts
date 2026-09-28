@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 import {isValidCommitForVcs} from '../../utils/commit';
+import {getProjectFarmConfig} from '../../utils/common';
 import {zodValidate} from '../../utils/validation';
 
 import {i18n} from './i18n';
@@ -14,9 +15,15 @@ const schema = z
         commit: z.string(),
     })
     .required()
-    .refine(({vcs, commit}) => isValidCommitForVcs(vcs, commit), {
-        path: ['commit'],
-        message: i18n('commit-invalid'),
-    });
+    .refine(
+        ({project, vcs, commit}) => {
+            const projectVcs = project ? getProjectFarmConfig(project).vcs || vcs : vcs;
+            return isValidCommitForVcs(projectVcs, commit);
+        },
+        {
+            path: ['commit'],
+            message: i18n('commit-invalid'),
+        },
+    );
 
 export const validate = zodValidate<FormValue>(schema);

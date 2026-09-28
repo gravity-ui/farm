@@ -7,9 +7,15 @@ import type {
 import {makePlainQueryDataSource} from '../components/data-source';
 import api from '../services/api';
 import {isValidCommitForVcs} from '../utils/commit';
+import {getProjectFarmConfig} from '../utils/common';
 
 const fetch = skipContext(async ({project, branch, commit, vcs}: GetInstancesConfigsRequest) => {
-    if (!project || !branch || !vcs || (commit && !isValidCommitForVcs(vcs, commit))) {
+    if (!project || !branch || !vcs) {
+        return [];
+    }
+
+    const projectVcs = getProjectFarmConfig(project).vcs || vcs;
+    if (commit && !isValidCommitForVcs(projectVcs, commit)) {
         return [];
     }
 
