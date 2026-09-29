@@ -19,6 +19,7 @@ import restartInstance from './restartInstance';
 import searchProjects from './searchProjects';
 import startInstance from './startInstance';
 import stopInstance from './stopInstance';
+import touchInstance from './touchInstance';
 
 export default {
     listProjects,
@@ -40,4 +41,5 @@ export default {
     getInstanceConfig,
     getInstancesConfigs,
     getProjectRepoUrl,
+    touchInstance,
 } as Record<string, ApiAction>;
