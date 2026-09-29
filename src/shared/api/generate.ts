@@ -1,6 +1,7 @@
 export type GenerateInstanceRequest = {
     project: string;
     branch: string;
+    commit?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;
@@ -12,4 +13,9 @@ export type GenerateInstanceRequest = {
 
 export type GenerateInstanceResponse = {
     hash: string;
+};
+
+export type GenerateInstanceError = {
+    message: string;
+    fields?: string[];
 };

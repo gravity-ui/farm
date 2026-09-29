@@ -16,6 +16,7 @@ Creates a new instance.
 {
     project: string;
     branch: string;
+    commit?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;
@@ -26,11 +27,24 @@ Creates a new instance.
 }
 ```
 
+`commit` is an optional VCS-specific revision identifier. It selects the source and configuration
+revision for checkout but does not affect the instance hash or URL. Git requires a full 40- or
+64-character hexadecimal commit hash. Without `commit`, Farm checks out `branch` as before.
+
 **Response**
 
 ```typescript
 {
     hash: string;
+}
+```
+
+Invalid parameters return HTTP 400 with the invalid field names:
+
+```typescript
+{
+    message: string;
+    fields?: string[];
 }
 ```
 
@@ -453,6 +467,7 @@ Gets the instance configuration.
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
     instanceConfigName: string;
 }
 ```
@@ -480,6 +495,7 @@ Gets a list of instance configuration names.
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
 }
 ```
 
@@ -543,6 +559,7 @@ hash: string
 ```typescript
 {
     branch: string;
+    commit?: string;
     vcs: string;
     project: string;
     createdAt: string;

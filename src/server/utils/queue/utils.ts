@@ -45,6 +45,7 @@ const validateInstanceEnv = async (
     const farmJson = await fetchProjectConfig({
         project: generateData.project,
         branch: generateData.branch,
+        commit: generateData.commit,
         vcs: generateData.vcs,
     });
 

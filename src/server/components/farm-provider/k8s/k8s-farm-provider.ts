@@ -208,12 +208,13 @@ export class K8sFarmProvider extends BaseFarmProvider {
         let builderInfo: K8sContainerInfo | undefined;
 
         try {
-            const {hash, vcs, project, branch, instanceConfigName} = generateData;
+            const {hash, vcs, project, branch, commit, instanceConfigName} = generateData;
 
             const projectConfig = await fetchProjectConfig({
                 vcs,
                 project,
                 branch,
+                commit,
             });
 
             const instanceConfig = getInstanceConfig(projectConfig, instanceConfigName).preview;
@@ -364,12 +365,13 @@ export class K8sFarmProvider extends BaseFarmProvider {
     }
 
     async startInstance(instance: Instance): Promise<void> {
-        const {vcs, project, branch, instanceConfigName, hash} = instance;
+        const {vcs, project, branch, commit, instanceConfigName, hash} = instance;
 
         const projectConfig = await fetchProjectConfig({
             vcs,
             project,
             branch,
+            commit,
         });
         const instanceConfig = getInstanceConfig(projectConfig, instanceConfigName).preview;
 

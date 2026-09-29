@@ -49,7 +49,7 @@ export const CreateFormContent = ({
             branch,
             vcs,
         },
-        [project, branch],
+        [project, branch, vcs],
     );
 
     const branchesQuery = useQueryData(listBranchesSource, branchesParams);

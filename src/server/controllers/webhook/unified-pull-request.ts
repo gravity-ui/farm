@@ -37,6 +37,7 @@ export async function handleUnifiedPullRequest(
             const configFile = await fetchProjectConfig({
                 project: commonData.project,
                 branch: commonData.branch,
+                commit: commonData.commit,
                 vcs,
             });
 
@@ -57,6 +58,7 @@ export async function handleUnifiedPullRequest(
                     vcs,
                     project: commonData.project,
                     branch: commonData.branch,
+                    commit: commonData.commit,
                     instanceConfigName: instanceConfig.name,
                     urlTemplate: instanceConfig.urlTemplate,
                 }),
@@ -112,6 +114,7 @@ export async function handleUnifiedPullRequest(
                     vcs,
                     project: commonData.project,
                     branch: commonData.branch,
+                    commit: commonData.commit,
                     instanceConfigName: config.name,
                     urlTemplate: config.urlTemplate,
                     description: commonData.description,

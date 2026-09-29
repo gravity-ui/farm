@@ -12,6 +12,7 @@ export type InstanceProviderStatus =
 
 export interface Instance {
     branch: string;
+    commit?: string;
     vcs: string;
     project: string;
     createdAt: string;

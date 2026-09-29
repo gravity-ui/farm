@@ -393,6 +393,7 @@ export class DockerFarmProvider extends BaseFarmProvider {
                 instanceDir: hash,
                 project,
                 branch,
+                commit: instance.commit,
             });
             observer.next({output: cloneOutput});
 

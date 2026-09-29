@@ -4,6 +4,7 @@ export interface GetInstanceConfigRequest {
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
     instanceConfigName: string;
 }
 

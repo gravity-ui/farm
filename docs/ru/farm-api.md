@@ -16,6 +16,7 @@ API Farm предоставляет интерфейс для управлени
 {
     project: string;
     branch: string;
+    commit?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;
@@ -26,11 +27,25 @@ API Farm предоставляет интерфейс для управлени
 }
 ```
 
+`commit` — необязательный идентификатор ревизии в формате выбранной VCS. Он задаёт ревизию
+исходников и конфигурации для checkout, но не влияет на хеш и URL инстанса. Для Git требуется
+полный шестнадцатеричный хеш коммита из 40 или 64 символов. Без `commit` Farm, как и раньше,
+использует `branch`.
+
 **Response**
 
 ```typescript
 {
     hash: string;
+}
+```
+
+При некорректных параметрах Farm возвращает HTTP 400 с именами полей:
+
+```typescript
+{
+    message: string;
+    fields?: string[];
 }
 ```
 
@@ -453,6 +468,7 @@ API Farm предоставляет интерфейс для управлени
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
     instanceConfigName: string;
 }
 ```
@@ -480,6 +496,7 @@ API Farm предоставляет интерфейс для управлени
     vcs: string;
     project: string;
     branch: string;
+    commit?: string;
 }
 ```
 
@@ -543,6 +560,7 @@ hash: string
 ```typescript
 {
     branch: string;
+    commit?: string;
     vcs: string;
     project: string;
     createdAt: string;

@@ -32,6 +32,7 @@
     "prepare:dev-config": "ts-node ./scripts/prepare-dev-configs.ts",
     "prepare": "husky",
     "start": "NODE_ENV=production node dist/server",
+    "test": "node --test tests/*.test.cjs",
     "typecheck:server": "NODE_OPTIONS=\"--max-old-space-size=1024\" tsc -p src/server --noEmit",
     "typecheck:ui": "NODE_OPTIONS=\"--max-old-space-size=2048\" tsc -p src/ui --noEmit",
     "typecheck": "npm-run-all --parallel typecheck:*"

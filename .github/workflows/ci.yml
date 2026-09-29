@@ -23,6 +23,8 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
+      - name: Test
+        run: npm test
 
   circular_deps:
     name: Check for circular dependencies

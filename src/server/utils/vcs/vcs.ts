@@ -6,18 +6,21 @@ import type {FarmProjectConfig} from '../farmJsonConfig';
 export interface VcsCheckoutProps {
     project: string;
     branch: string;
+    commit?: string;
     instanceDir: string;
 }
 
 export interface VcsGetK8sCheckoutCommands {
     project: string;
     branch: string;
+    commit?: string;
 }
 
 export interface CommonPullRequestData {
     action: 'opened' | 'closed';
     project: string;
     branch: string;
+    commit?: string;
     title: string;
     description: string;
     includedConfigNames?: string;
@@ -31,8 +34,18 @@ export interface CommonPullRequestData {
 
 export type GetProjectConfigParams = VcsGetK8sCheckoutCommands;
 
+export function getCheckoutRef({
+    branch,
+    commit,
+}: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>) {
+    return commit || branch;
+}
+
 export interface Vcs {
     startup(): Promise<void>;
+
+    getCheckoutRef?(params: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>): string;
+    isValidRef?(ref: string): boolean;
 
     checkout(params: VcsCheckoutProps): Promise<Output[]>;
     getK8sCheckoutCommands(params: VcsGetK8sCheckoutCommands): string[];
