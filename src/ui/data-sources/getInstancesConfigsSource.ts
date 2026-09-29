@@ -6,22 +6,15 @@ import type {
 } from '../../shared/api/getInstancesConfigs';
 import {makePlainQueryDataSource} from '../components/data-source';
 import api from '../services/api';
-import {isValidCommitForVcs} from '../utils/commit';
-import {getProjectFarmConfig} from '../utils/common';
 
-const fetch = skipContext(async ({project, branch, commit, vcs}: GetInstancesConfigsRequest) => {
+const fetch = skipContext(async ({project, branch, vcs}: GetInstancesConfigsRequest) => {
     if (!project || !branch || !vcs) {
-        return [];
-    }
-
-    const projectVcs = getProjectFarmConfig(project).vcs || vcs;
-    if (commit && !isValidCommitForVcs(projectVcs, commit)) {
         return [];
     }
 
     const {configs} = await api.request<GetInstancesConfigsRequest, GetInstancesConfigsResponse>({
         action: 'getInstancesConfigs',
-        data: {project, vcs, branch, commit},
+        data: {project, vcs, branch},
     });
 
     return configs;

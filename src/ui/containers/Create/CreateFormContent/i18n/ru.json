@@ -1,7 +1,6 @@
 {
   "project-name": "Название проекта",
   "branch": "Ветка",
-  "commit": "Коммит (необязательно)",
   "description": "Описание",
   "url-template": "Шаблон URL",
   "instance-config": "Конфиг инстанса",

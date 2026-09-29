@@ -1,7 +1,11 @@
 import type {Request, Response} from '@gravity-ui/expresskit';
 import {z} from 'zod';
 
-import type {GenerateInstanceRequest, GenerateInstanceResponse} from '../../shared/api/generate';
+import type {
+    GenerateInstanceError,
+    GenerateInstanceRequest,
+    GenerateInstanceResponse,
+} from '../../shared/api/generate';
 import {ENV_PREFIX, LABEL_PREFIX, RUN_ENV_PREFIX} from '../../shared/constants';
 import {filterEmptyObjectEntries, generateInstanceHash, wrapInternalError} from '../utils/common';
 import {fetchProjectConfig} from '../utils/farmJsonConfig';
@@ -9,8 +13,6 @@ import * as instanceUtils from '../utils/instance';
 import type {Stats} from '../utils/stats';
 import {sendStats} from '../utils/stats';
 import {getVcs} from '../utils/vcs';
-
-const invalidCommitMessage = 'Invalid commit parameter';
 
 const schema = z.object({
     project: z.string(),
@@ -24,16 +26,23 @@ const schema = z.object({
     stopTimeout: z.number().optional(),
 });
 
+const sendInvalidRequest = (res: Response, fields: string[]) => {
+    const uniqueFields = [...new Set(fields)];
+    res.status(400).send({
+        message: `Invalid request parameters: ${uniqueFields.join(', ')}`,
+        fields: uniqueFields,
+    } satisfies GenerateInstanceError);
+};
+
 const generate = async (req: Request, res: Response) => {
     const parsed = await schema.passthrough().safeParseAsync(req.body as GenerateInstanceRequest);
 
     if (!parsed.success) {
         req.ctx.logError('invalid generate request', wrapInternalError(parsed.error));
-        if (parsed.error.issues.some(({path}) => path[0] === 'commit')) {
-            res.status(400).send({message: invalidCommitMessage});
-        } else {
-            res.sendStatus(400);
-        }
+        sendInvalidRequest(
+            res,
+            parsed.error.issues.map(({path}) => path.join('.') || 'request'),
+        );
         return;
     }
 
@@ -51,7 +60,7 @@ const generate = async (req: Request, res: Response) => {
     } = parsed.data;
 
     if (commit !== undefined && getVcs(vcs).isValidRef?.(commit) === false) {
-        res.status(400).send({message: invalidCommitMessage});
+        sendInvalidRequest(res, ['commit']);
         return;
     }
 

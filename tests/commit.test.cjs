@@ -24,7 +24,6 @@ const {fetchProjectConfig} = require('../src/server/utils/farmJsonConfig.ts');
 const {GitVcs} = require('../src/server/utils/vcs/git.ts');
 const {getCheckoutRef} = require('../src/server/utils/vcs/vcs.ts');
 const {isCommitHash} = require('../src/shared/commit.ts');
-const {isValidCommitForVcs} = require('../src/ui/utils/commit.ts');
 
 after(async () => {
     await knexInstance.destroy();
@@ -53,9 +52,6 @@ test('commit changes checkout ref but not instance hash', () => {
         generateInstanceHash({...identity, commit: firstCommit}),
         generateInstanceHash({...identity, commit: secondCommit}),
     );
-    assert.equal(isValidCommitForVcs('git', firstCommit), true);
-    assert.equal(isValidCommitForVcs('git', 'revision:42'), false);
-    assert.equal(isValidCommitForVcs('custom', 'revision:42'), true);
 });
 
 test('Git checkout commands select the supplied commit', () => {
@@ -152,7 +148,11 @@ test('custom VCS accepts its revision through generation and config lookup', asy
 
     req.body.commit = 'invalid';
     await generate(req, res);
-    assert.deepEqual(generated[2], {status: 400, message: 'Invalid commit parameter'});
+    assert.deepEqual(generated[2], {
+        status: 400,
+        message: 'Invalid request parameters: commit',
+        fields: ['commit'],
+    });
 });
 
 test('Git rejects invalid commit with 400 before config lookup', async () => {
@@ -171,8 +171,29 @@ test('Git rejects invalid commit with 400 before config lookup', async () => {
         );
     }
     assert.deepEqual(responses, [
-        {status: 400, message: 'Invalid commit parameter'},
-        {status: 400, message: 'Invalid commit parameter'},
+        {status: 400, message: 'Invalid request parameters: commit', fields: ['commit']},
+        {status: 400, message: 'Invalid request parameters: commit', fields: ['commit']},
+    ]);
+});
+
+test('generation reports every invalid request field', async () => {
+    const responses = [];
+    await generate(
+        {
+            body: {branch: 'feature', vcs: 'git', stopTimeout: 'later'},
+            ctx: {logError: () => undefined},
+        },
+        {
+            status: (status) => ({send: (body) => responses.push({status, ...body})}),
+        },
+    );
+
+    assert.deepEqual(responses, [
+        {
+            status: 400,
+            message: 'Invalid request parameters: project, stopTimeout',
+            fields: ['project', 'stopTimeout'],
+        },
     ]);
 });
 

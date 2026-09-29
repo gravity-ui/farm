@@ -33,5 +33,6 @@ curl -X POST "https://farm.domain/webhook" \
 
 It should be clarified that the event header may vary in different systems. It should be specified in the configuration, details in the [`Farm configuration`](./farm-config-json.md) description in the `vcsCredentials` section.
 
-The optional commit pins checkout and configuration loading to an exact revision. The branch
-continues to determine instance identity, so a new commit can rebuild the same instance URL.
+The optional `pull_request.head.sha` from the payload is used as the commit: it pins checkout and
+configuration loading to an exact revision, while the branch (`pull_request.head.ref`) still
+determines instance identity. A new commit can therefore rebuild the same instance URL.

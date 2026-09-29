@@ -39,6 +39,15 @@ revision for checkout but does not affect the instance hash or URL. Git requires
 }
 ```
 
+Invalid parameters return HTTP 400 with the invalid field names:
+
+```typescript
+{
+    message: string;
+    fields?: string[];
+}
+```
+
 ### POST /api/:action
 
 Universal endpoint for performing various actions. Available actions are listed below.

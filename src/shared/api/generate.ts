@@ -14,3 +14,8 @@ export type GenerateInstanceRequest = {
 export type GenerateInstanceResponse = {
     hash: string;
 };
+
+export type GenerateInstanceError = {
+    message: string;
+    fields?: string[];
+};

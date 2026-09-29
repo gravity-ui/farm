@@ -36,7 +36,7 @@ export const CreateFormContent = ({
 }: FormContentProps) => {
     const formApi = useForm<FormValue>();
     const {
-        values: {project, branch, commit, vcs, instanceConfigName},
+        values: {project, branch, vcs, instanceConfigName},
     } = useFormState<FormValue>({
         subscription: {
             values: true,
@@ -47,10 +47,9 @@ export const CreateFormContent = ({
         {
             project,
             branch,
-            commit,
             vcs,
         },
-        [project, branch, commit],
+        [project, branch, vcs],
     );
 
     const branchesQuery = useQueryData(listBranchesSource, branchesParams);
@@ -150,8 +149,6 @@ export const CreateFormContent = ({
                 if (projectBranch) {
                     formApi.change('branch', projectBranch);
                 }
-
-                formApi.change('commit', '');
             });
         },
         [formApi],
@@ -174,10 +171,6 @@ export const CreateFormContent = ({
                     ) : (
                         <SelectField name="branch" options={branchesOptions} />
                     )}
-                </FormRow>
-
-                <FormRow label={i18n('commit')}>
-                    <TextField name="commit" />
                 </FormRow>
 
                 <FormRow label={i18n('description')}>

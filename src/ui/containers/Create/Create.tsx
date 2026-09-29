@@ -59,7 +59,6 @@ export const Create = () => {
                         data: {
                             project: fv.project,
                             branch: fv.branch,
-                            commit: fv.commit || undefined,
                             vcs: fv.vcs,
                             instanceConfigName: fv.instanceConfigName,
                         },
@@ -82,7 +81,6 @@ export const Create = () => {
             const data: GenerateInstanceRequest = {
                 project: fv.project,
                 branch: fv.branch,
-                commit: fv.commit || undefined,
                 description: fv.description,
                 urlTemplate,
                 vcs: fv.vcs,
@@ -146,7 +144,6 @@ export const Create = () => {
                 projectFarmConfig.defaultBranch ||
                 window.FM.defaultBranch ||
                 'main',
-            commit: params.get('commit') ?? '',
             description: params.get('description') ?? '',
             urlTemplate: params.get('urlTemplate') ?? '',
             instanceConfigName: params.get('instanceConfigName') ?? '',
