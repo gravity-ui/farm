@@ -89,12 +89,12 @@ export class GitVcs implements Vcs {
             `mkdir -p '${repositoryPath}'`,
             commit
                 ? `git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`
-                : `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`,
+                : `git clone --depth 1 -b ${checkoutRef} ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`,
             ...(commit
                 ? [
                       `cd '${repositoryPath}'`,
-                      `git fetch --depth 1 origin ${checkoutRef}`,
-                      `git checkout --detach ${checkoutRef}`,
+                      `git fetch --depth 1 origin ${commit}`,
+                      `git checkout --detach ${commit}`,
                       `cd /${TEMP_PATH}`,
                   ]
                 : []),
