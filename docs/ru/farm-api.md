@@ -356,6 +356,28 @@ API Farm предоставляет интерфейс для управлени
 {}
 ```
 
+#### touchInstance
+
+Регистрирует активность инстанса для расчёта времени простоя при включённом `instanceActivityTrackingEnabled`. В противном случае возвращает успешный ответ без обновления времени. Вызывающая сторона должна исключать проверки состояния и ограничивать частоту запросов.
+
+**Method**: `POST`
+
+**Action**: `touchInstance`
+
+**Body**
+
+```typescript
+{
+    hash: string;
+}
+```
+
+**Response**
+
+```typescript
+{}
+```
+
 #### getInstanceProviderStatus
 
 Получает статус инстанса от провайдера.
@@ -573,6 +595,7 @@ hash: string
     description?: string;
     instanceConfigName: string;
     stopTimeout?: number;
+    lastActivityAt?: number;
 }
 ```
 
