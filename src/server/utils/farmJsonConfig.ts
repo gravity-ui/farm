@@ -9,6 +9,7 @@ import {coreRegistry} from '../components/core-plugin-registry';
 import type {DockerInstanceHealthcheck} from '../components/farm-provider/docker/types';
 
 import {fileExists, readFile} from './files';
+import {registerSecrets} from './secret-env';
 import {getVcs} from './vcs';
 import {getCheckoutRef} from './vcs/vcs';
 
@@ -164,6 +165,7 @@ export async function fetchProjectConfig(params: FetchProjectConfigParams) {
 
     const {project, branch, commit} = params;
     const result = formatProjectConfig(await vcs.getProjectConfig({project, branch, commit}));
+    registerSecrets(result);
     configCache.set(cacheKey, JSON.stringify(result));
     return result;
 }
@@ -182,6 +184,7 @@ export async function readConfigFile(instancePath: string) {
     const configString = await readFile(configFilePath, 'utf-8');
     const config: FarmProjectConfig = JSON.parse(configString);
 
+    registerSecrets(config);
     return formatProjectConfig(config);
 }
 

@@ -1,7 +1,6 @@
 import React, {useCallback, useMemo, useState} from 'react';
 
 import {dateTimeParse} from '@gravity-ui/date-utils';
-import {LongValue} from '@gravity-ui/dynamic-forms';
 import type {TableColumnConfig, TableSettingsData} from '@gravity-ui/uikit';
 import {
     Checkbox,
@@ -11,7 +10,6 @@ import {
     Table,
     TextInput,
     sp,
-    spacing,
     withTableActions,
     withTableCopy,
     withTableSelection,
@@ -22,7 +20,9 @@ import _ from 'lodash';
 import {generatePath, useNavigate, useSearchParams} from 'react-router-dom';
 
 import type {QueuedInstance} from '../../../shared/common';
+import {MASKED_SECRET_VALUE, getEnvKey, isSecretEnvKey} from '../../../shared/secret-env';
 import {uiRoutes} from '../../../shared/uiRoutes';
+import {SecretEnvIcon} from '../../components/SecretEnvIcon/SecretEnvIcon';
 import {dataManager} from '../../components/data-source';
 import {InstanceCount} from '../../components/instance/InstanceCount/InstanceCount';
 import {InstanceHash} from '../../components/instance/InstanceHash/InstanceHash';
@@ -51,6 +51,27 @@ const InstanceTable = withTableSettings(
     withTableSelection(withTableSorting(withTableCopy(withTableActions<QueuedInstance>(Table)))),
 );
 const EMPTY_SYMBOL = '\u2014';
+const EnvVariablesView = ({variables}: {variables: Record<string, string>}) => (
+    <Flex gap={2} direction="column" onClick={(event) => event.stopPropagation()}>
+        {Object.entries(variables).map(([key, value]) => (
+            <Label
+                key={key}
+                icon={isSecretEnvKey(key) ? <SecretEnvIcon /> : undefined}
+                theme={isSecretEnvKey(key) ? 'utility' : 'normal'}
+                value={isSecretEnvKey(key) ? MASKED_SECRET_VALUE : value}
+            >
+                {getEnvKey(key)}
+            </Label>
+        ))}
+    </Flex>
+);
+
+const copyPublicVariables = (variables: Record<string, string>) =>
+    Object.entries(variables)
+        .filter(([key]) => !isSecretEnvKey(key))
+        .map(([key, value]) => `${key}=${value}`)
+        .join(' ') || undefined;
+
 const columns: TableColumnConfig<QueuedInstance>[] = [
     {
         id: 'branch',
@@ -183,63 +204,24 @@ const columns: TableColumnConfig<QueuedInstance>[] = [
         id: 'envVariables',
         name: i18nInstance('env-variables'),
         className: styles.envCells,
-        template: ({envVariables}) => {
-            if (_.isEmpty(envVariables)) {
-                return EMPTY_SYMBOL;
-            }
-
-            const envs = Object.entries(envVariables).map(([key, value]) => `${key}=${value}`);
-
-            return (
-                <LongValue
-                    onClick={(e) => e.stopPropagation()}
-                    className={spacing({m: '0'})}
-                    value={envs.join('\n')}
-                    color="secondary"
-                />
-            );
-        },
+        template: ({envVariables}) =>
+            _.isEmpty(envVariables) ? EMPTY_SYMBOL : <EnvVariablesView variables={envVariables} />,
         meta: {
-            copy: ({envVariables}: QueuedInstance) => {
-                if (_.isEmpty(envVariables)) {
-                    return '';
-                }
-
-                const envs = Object.entries(envVariables).map(([key, value]) => `${key}=${value}`);
-                return envs.join(' ');
-            },
+            copy: ({envVariables}: QueuedInstance) => copyPublicVariables(envVariables || {}),
         },
     },
     {
         id: 'runEnvVariables',
         name: i18nInstance('run-env-variables'),
         className: styles.envCells,
-        template: ({runEnvVariables}) => {
-            if (_.isEmpty(runEnvVariables)) {
-                return EMPTY_SYMBOL;
-            }
-
-            const envs = Object.entries(runEnvVariables).map(([key, value]) => `${key}=${value}`);
-            return (
-                <LongValue
-                    onClick={(e) => e.stopPropagation()}
-                    className={spacing({m: '0'})}
-                    value={envs.join('\n')}
-                    color="secondary"
-                />
-            );
-        },
+        template: ({runEnvVariables}) =>
+            _.isEmpty(runEnvVariables) ? (
+                EMPTY_SYMBOL
+            ) : (
+                <EnvVariablesView variables={runEnvVariables} />
+            ),
         meta: {
-            copy: ({runEnvVariables}: QueuedInstance) => {
-                if (_.isEmpty(runEnvVariables)) {
-                    return '';
-                }
-
-                const vars = runEnvVariables as Record<string, string>;
-                const envs = Object.entries(vars).map(([key, value]) => `${key}=${value}`);
-
-                return envs.join(' ');
-            },
+            copy: ({runEnvVariables}: QueuedInstance) => copyPublicVariables(runEnvVariables || {}),
         },
     },
 ];

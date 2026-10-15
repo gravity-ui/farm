@@ -4,6 +4,7 @@ import {snakeCase} from 'lodash';
 
 import {getGlobalFarmConfig, wrapInternalError} from './common';
 import {getInstancesByStatus} from './db';
+import {maskSecrets} from './secret-env';
 
 export interface Stats extends Dict {
     action: string;
@@ -38,21 +39,28 @@ export function sendStats(data: Stats, ctx: AppContext) {
         if (!ctx) return;
 
         try {
-            ctx.stats('apiRequests', {
-                service,
-                action,
-                responseStatus,
-                requestId: requestId || '-',
-                requestTime,
-                requestMethod,
-                requestUrl,
-                timestamp,
-                hash: hash ?? '',
-                queue: queued.length || 0,
-                step: step as string,
-            });
+            ctx.stats(
+                'apiRequests',
+                maskSecrets({
+                    service,
+                    action,
+                    responseStatus,
+                    requestId: requestId || '-',
+                    requestTime,
+                    requestMethod,
+                    requestUrl,
+                    timestamp,
+                    hash: hash ?? '',
+                    queue: queued.length || 0,
+                    step: step as string,
+                }),
+            );
         } catch (chError) {
-            ctx.logError('Send new clickhouse stats failed', wrapInternalError(chError), data);
+            ctx.logError(
+                'Send new clickhouse stats failed',
+                wrapInternalError(chError),
+                maskSecrets(data),
+            );
         }
     };
 
