@@ -4,4 +4,6 @@ export interface ListBranchesResponse {
 
 export interface ListBranchesRequest {
     project: string;
+    refType?: 'branch' | 'tag';
+    query?: string;
 }

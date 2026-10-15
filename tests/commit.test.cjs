@@ -62,14 +62,14 @@ test('Git checkout commands select the supplied commit', () => {
         commit: firstCommit,
     });
 
-    assert.ok(commands.includes(`git fetch --depth 1 origin ${firstCommit}`));
-    assert.ok(commands.includes(`git checkout --detach ${firstCommit}`));
+    assert.ok(commands.includes(`git fetch --depth 1 origin '${firstCommit}'`));
+    assert.ok(commands.includes(`git checkout --detach '${firstCommit}'`));
     assert.ok(commands.includes("mkdir -p 'owner/sample'"));
     assert.ok(!commands.some((command) => command.includes('-b feature')));
     const branchCommands = vcs.getK8sCheckoutCommands({project: 'sample', branch: 'feature'});
     assert.ok(
         branchCommands.includes(
-            'git clone --depth 1 -b feature https://github.com/owner/sample.git owner/sample',
+            "git clone --depth 1 -b 'feature' -- 'https://github.com/owner/sample.git' 'owner/sample'",
         ),
     );
     assert.throws(() => vcs.getCheckoutRef({branch: 'feature', commit: 'revision:42'}));

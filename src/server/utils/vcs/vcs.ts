@@ -1,5 +1,6 @@
 import type {Request} from '@gravity-ui/expresskit';
 
+import type {ListBranchesRequest} from '../../../shared/api/listBranches';
 import type {Output} from '../../../shared/common';
 import type {FarmProjectConfig} from '../farmJsonConfig';
 
@@ -63,7 +64,10 @@ export interface Vcs {
     getProjectConfig(params: GetProjectConfigParams): Promise<FarmProjectConfig>;
 
     /** Fetches branches from remote repository */
-    listBranches(projectName: string): Promise<string[]>;
+    listBranches(
+        projectName: string,
+        options?: Pick<ListBranchesRequest, 'refType' | 'query'>,
+    ): Promise<string[]>;
 
     /** Get Project Repository Url */
     getProjectRepoUrl(projectName: string): string;
