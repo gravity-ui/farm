@@ -20,6 +20,7 @@ import api from '../../services/api';
 import {handleRequestErrorWithToast, toaster} from '../../services/toaster';
 import {getErrorMessageFromAxios, getProjectFarmConfig, omitNullable} from '../../utils/common';
 import {DEFAULT_PROJECT} from '../../utils/constants';
+import {normalizeEnvValue, prepareEnvFormVariables} from '../../utils/prepareEnvFormVariables';
 import {prepareGenerateInstanceRequest} from '../../utils/prepareGenerateInstanceRequest';
 import {useInstanceActions} from '../Instance/actions';
 
@@ -86,23 +87,14 @@ export const Create = () => {
                 vcs: fv.vcs,
                 instanceConfigName: fv.instanceConfigName,
                 labels: {},
+                ...(cloneHash ? {secretSourceHash: cloneHash} : {}),
             };
 
-            if (Array.isArray(fv.variables)) {
-                fv.variables.forEach(({key, value}) => {
-                    if (key && value) {
-                        data[`${ENV_PREFIX}${key.trim()}`] = value.trim();
-                    }
-                });
-            }
-
-            if (Array.isArray(fv.runVariables)) {
-                fv.runVariables.forEach(({key, value}) => {
-                    if (key && value) {
-                        data[`${RUN_ENV_PREFIX}${key.trim()}`] = value.trim();
-                    }
-                });
-            }
+            Object.assign(
+                data,
+                prepareEnvFormVariables(fv.variables, ENV_PREFIX),
+                prepareEnvFormVariables(fv.runVariables, RUN_ENV_PREFIX),
+            );
 
             if (Array.isArray(fv.labels)) {
                 fv.labels.forEach(({key, value}) => {
@@ -123,12 +115,14 @@ export const Create = () => {
 
                 if (response.hash) {
                     navigate(generatePath(uiRoutes.instance, {hash: response.hash}));
+                    return response.hash;
                 }
             } catch (e) {
                 handleRequestErrorWithToast(e as AxiosError<{message: string}>);
             }
+            return undefined;
         },
-        [navigate],
+        [navigate, cloneHash],
     );
 
     const initialValues = React.useMemo<FormValue>(() => {
@@ -160,13 +154,13 @@ export const Create = () => {
             if (key.startsWith(ENV_PREFIX)) {
                 values.variables.push({
                     key: key.slice(ENV_PREFIX.length).trim(),
-                    value: val.trim(),
+                    value: normalizeEnvValue(key.slice(ENV_PREFIX.length), val),
                 });
             }
             if (key.startsWith(RUN_ENV_PREFIX)) {
                 values.runVariables.push({
                     key: key.slice(RUN_ENV_PREFIX.length).trim(),
-                    value: val.trim(),
+                    value: normalizeEnvValue(key.slice(RUN_ENV_PREFIX.length), val),
                 });
             }
             if (key.startsWith(LABEL_PREFIX)) {
@@ -196,7 +190,11 @@ export const Create = () => {
     const handleModalSave = React.useCallback(
         async (isDeleteOriginalInstance: boolean) => {
             if (pendingFormValues) {
-                if (isDeleteOriginalInstance) {
+                const generatedHash = await handleSubmit(pendingFormValues);
+                if (!generatedHash) {
+                    return;
+                }
+                if (isDeleteOriginalInstance && generatedHash !== cloneHash) {
                     try {
                         await deleteInstance({hash: cloneHash} as Instance, false);
                     } catch (e) {
@@ -205,7 +203,6 @@ export const Create = () => {
                 }
 
                 setOpenDeleteOriginalInstanceModal(false);
-                await handleSubmit(pendingFormValues);
                 setPendingFormValues(null);
             }
         },
@@ -222,7 +219,13 @@ export const Create = () => {
             />
             <Form
                 initialValues={initialValues}
-                onSubmit={cloneHash ? handleCloneSubmit : handleSubmit}
+                onSubmit={
+                    cloneHash
+                        ? handleCloneSubmit
+                        : async (values) => {
+                              await handleSubmit(values);
+                          }
+                }
                 mutators={mutators}
                 validate={validate}
                 render={(props) => <CreateFormContent {...props} />}

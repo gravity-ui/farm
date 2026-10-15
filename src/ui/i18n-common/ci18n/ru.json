@@ -5,5 +5,7 @@
   "cancel": "Отмена",
   "create": "Создать",
   "farm-name": "Farm",
-  "error-title": "Ошибка"
+  "error-title": "Ошибка",
+  "secret-variable": "Секретная переменная окружения",
+  "stored-secret-value": "Секрет сохранен, введите новое значение для замены"
 }

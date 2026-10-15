@@ -15,6 +15,7 @@ import {
 import {getInstanceDescription} from '../../utils/common-db';
 import {getInstance, getInstancesByBranch, listInstances} from '../../utils/db';
 import {fetchProjectConfig} from '../../utils/farmJsonConfig';
+import {maskSecrets, registerSecrets} from '../../utils/secret-env';
 import type {CommonPullRequestData} from '../../utils/vcs/vcs';
 
 import {getCurrentInstanceAndGenerate} from './common';
@@ -24,6 +25,7 @@ export async function handleUnifiedPullRequest(
     vcs: string,
     ctx: AppContext,
 ) {
+    registerSecrets(commonData);
     const {labels, uniqByLabels, webhookActionParameters} = commonData;
 
     // Get VCS implementation through core registry
@@ -193,10 +195,14 @@ export async function handleUnifiedPullRequest(
         }
     } catch (error) {
         if (error instanceof Error) {
-            ctx.logError('PROCESS_WEBHOOK_ON_PULL_REQUEST', wrapInternalError(error), {
-                ...commonData,
-                error: error.message,
-            });
+            ctx.logError(
+                'PROCESS_WEBHOOK_ON_PULL_REQUEST',
+                wrapInternalError(error),
+                maskSecrets({
+                    ...commonData,
+                    error: error.message,
+                }),
+            );
         }
         throw error;
     }

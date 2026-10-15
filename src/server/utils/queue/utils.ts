@@ -2,12 +2,15 @@ import type {AppContext} from '@gravity-ui/nodekit';
 import {Observable} from 'observable-fns';
 
 import type {Instance} from '../../../shared/common';
+import {getEnvKey} from '../../../shared/secret-env';
 import {getServerApp} from '../../app';
 import {getFarmProvider} from '../../components/farm-provider';
 import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../models/common';
 import * as db from '../../utils/db';
 import {formatError} from '../common';
+import {buildInheritedEnv} from '../envHelpers';
 import {fetchProjectConfig} from '../farmJsonConfig';
+import {maskSecrets, normalizeInstanceEnv} from '../secret-env';
 import type {Stats} from '../stats';
 import {sendStats} from '../stats';
 
@@ -35,12 +38,9 @@ const validateInstanceEnv = async (
     generateData: GenerateInstanceData,
 ): Promise<{valid: boolean; protectedEnv?: string[]}> => {
     const envSet = new Set([
-        ...Object.keys(generateData.envVariables || {}),
-        ...Object.keys(generateData.runEnvVariables || {}),
+        ...Object.keys(generateData.envVariables || {}).map(getEnvKey),
+        ...Object.keys(generateData.runEnvVariables || {}).map(getEnvKey),
     ]);
-    if (envSet.size === 0) {
-        return {valid: true};
-    }
 
     const farmJson = await fetchProjectConfig({
         project: generateData.project,
@@ -53,6 +53,13 @@ const validateInstanceEnv = async (
         (conf) => conf.name === generateData.instanceConfigName,
     );
     const {protectedEnv} = instanceFarmJson || {};
+    await db.updateInstanceSecretSnapshot(generateData.hash, {
+        env: instanceFarmJson?.env,
+        runEnv: instanceFarmJson?.runEnv,
+        inheritedEnv: instanceFarmJson?.envInheritance
+            ? buildInheritedEnv(instanceFarmJson.envInheritance)
+            : undefined,
+    });
 
     if (!protectedEnv || protectedEnv.length === 0) {
         return {valid: true};
@@ -79,7 +86,10 @@ const buildInstance = ({
             validateInstanceEnv(instance)
                 .then((validationResult) => {
                     if (validationResult.valid) {
-                        return getFarmProvider().buildInstance(instance, observer);
+                        return getFarmProvider().buildInstance(
+                            normalizeInstanceEnv(instance),
+                            observer,
+                        );
                     }
                     throw new Error(
                         `Do not rewrite protected env: ${validationResult?.protectedEnv?.join(', ')}`,
@@ -96,6 +106,7 @@ const buildInstance = ({
         observable.subscribe({
             next: async ({output, config}) => {
                 if (output && output.length > 0) {
+                    output = maskSecrets(output);
                     await db.insertInstanceLogs(instance.hash, output);
 
                     // TODO(golbahsg): Why only one?
@@ -126,7 +137,9 @@ const buildInstance = ({
                 sendBuildStats('BUILD_ERRORED');
             },
             complete: () => {
-                resolve();
+                db.finishInstanceLogs(instance.hash)
+                    .catch(console.log)
+                    .finally(() => resolve());
             },
         });
     });

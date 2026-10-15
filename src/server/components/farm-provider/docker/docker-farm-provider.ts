@@ -14,11 +14,13 @@ import type {
 import {WORKDIR_PATH} from '../../../constants';
 import type {GenerateInstanceData, InstanceObservableEmitValue} from '../../../models/common';
 import {generateInstanceHref, getProjectFarmConfig, sleep} from '../../../utils/common';
+import {updateInstanceSecretSnapshot} from '../../../utils/db';
 import {buildEnvVariablesStrPairArr, buildInheritedEnv} from '../../../utils/envHelpers';
 import {getInstanceConfig, readConfigFile} from '../../../utils/farmJsonConfig';
 import {removeDirectory} from '../../../utils/files';
 import {type HealthcheckInstance, HealthcheckManager} from '../../../utils/healthcheck';
 import {ping} from '../../../utils/ping';
+import {mergeSecretEnv} from '../../../utils/secret-env';
 import {normalizeInstanceProviderStatus} from '../../../utils/status';
 import {getVcs} from '../../../utils/vcs';
 import type {FarmInternalApi, LogParams} from '../base-provider';
@@ -412,8 +414,9 @@ export class DockerFarmProvider extends BaseFarmProvider {
             const inheritedEnv = farmInstanceConfig.preview?.envInheritance
                 ? buildInheritedEnv(farmInstanceConfig.preview?.envInheritance)
                 : {};
-            const buildEnv = {...inheritedEnv, ...envSpec, ...envVariables};
-            const runEnv = {...buildEnv, ...runEnvSpec, ...runEnvVariables};
+            await updateInstanceSecretSnapshot(hash, {envSpec, runEnvSpec, inheritedEnv});
+            const buildEnv = mergeSecretEnv(inheritedEnv, envSpec, envVariables);
+            const runEnv = mergeSecretEnv(buildEnv, runEnvSpec, runEnvVariables);
 
             const containerRunEnvArray = buildEnvVariablesStrPairArr(runEnv, {
                 noWrap: true,

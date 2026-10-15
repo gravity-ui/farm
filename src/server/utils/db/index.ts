@@ -2,7 +2,14 @@ import _ from 'lodash';
 
 import type {Instance, InstanceCommonStatus, Output} from '../../../shared/common';
 import type {GenerateInstanceData, InstanceBuildLogsRow, InstanceRow} from '../../models/common';
-import {getCurrentTime} from '../common';
+import {getCurrentTime, getGlobalFarmConfig} from '../common';
+import {
+    createSecretLogRedactor,
+    getSecretValues,
+    maskLogFragments,
+    registerSecretValues,
+    registerSecrets,
+} from '../secret-env';
 
 import {knexInstance} from './knex';
 
@@ -11,6 +18,7 @@ export async function insertInstance(
         status: InstanceCommonStatus;
     },
 ): Promise<void> {
+    registerSecrets(instance);
     await knexInstance('instances').insert({
         project: instance.project,
         branch: instance.branch,
@@ -31,9 +39,33 @@ export async function insertInstance(
     });
 }
 
-export async function insertInstanceLogs(hash: string, logs: Output[]): Promise<void> {
-    const logEntries = logs.reduce<Omit<InstanceBuildLogsRow, 'id'>[]>(
-        (acc, {stdout = '', stderr = '', command = '', duration = 0, code = 0}) => {
+const logRedactors = new Map<string, ReturnType<typeof createSecretLogRedactor>>();
+
+const pendingLogWrites = new Map<string, Promise<void>>();
+
+export function insertInstanceLogs(hash: string, logs: Output[]): Promise<void> {
+    const pending = (pendingLogWrites.get(hash) || Promise.resolve())
+        .catch(() => undefined)
+        .then(() => storeInstanceLogs(hash, logs));
+    pendingLogWrites.set(hash, pending);
+    return pending.finally(() => {
+        if (pendingLogWrites.get(hash) === pending) pendingLogWrites.delete(hash);
+    });
+}
+
+async function storeInstanceLogs(hash: string, logs: Output[]): Promise<void> {
+    registerSecrets(getGlobalFarmConfig());
+    registerSecrets(await getInstance(hash));
+    let redactor = logRedactors.get(hash);
+    if (!redactor) {
+        redactor = createSecretLogRedactor();
+        logRedactors.set(hash, redactor);
+    }
+    const logEntries = redactor
+        .redact(logs)
+        .reduce<
+            Omit<InstanceBuildLogsRow, 'id'>[]
+        >((acc, {stdout = '', stderr = '', command = '', duration = 0, code = 0}) => {
             acc.push({
                 hash,
                 stdout,
@@ -44,34 +76,68 @@ export async function insertInstanceLogs(hash: string, logs: Output[]): Promise<
                 created: getCurrentTime().toString(),
             });
             return acc;
-        },
-        [],
-    );
+        }, []);
 
     await knexInstance('instance_build_logs').insert(logEntries);
 }
 
-const mapInstanceRow = (row: InstanceRow): Instance => ({
-    branch: row.branch,
-    commit: row.commit || undefined,
-    project: row.project,
-    vcs: row.vcs,
-    urlTemplate: row.url_template || undefined,
-    status: row.status,
-    instanceConfigName: row.instance_config_name,
-    hash: row.hash || '',
-    description: row.description || '',
-    createdAt: row.created,
-    envVariables: _.isEmpty(row.env_variables)
-        ? undefined
-        : JSON.parse(row.env_variables as string),
-    labels: _.isEmpty(row.labels) ? undefined : JSON.parse(row.labels as string),
-    runEnvVariables: _.isEmpty(row.run_env_variables)
-        ? undefined
-        : JSON.parse(row.run_env_variables as string),
-    stopTimeout: row.stop_timeout || undefined,
-    lastActivityAt: row.last_activity_at ? Number(row.last_activity_at) : undefined,
-});
+const parseStoredEnv = (
+    serialized: string | null,
+): {variables: Record<string, string>; secretSnapshot: string[]} => {
+    const parsed = serialized ? JSON.parse(serialized) : {};
+    if (
+        parsed.variables &&
+        typeof parsed.variables === 'object' &&
+        Array.isArray(parsed.secretSnapshot)
+    ) {
+        return {
+            variables: parsed.variables,
+            secretSnapshot: parsed.secretSnapshot.filter(
+                (value: unknown): value is string => typeof value === 'string',
+            ),
+        };
+    }
+    return {variables: parsed, secretSnapshot: []};
+};
+
+export async function updateInstanceSecretSnapshot(hash: string, source: unknown): Promise<void> {
+    const snapshot = getSecretValues(source);
+    if (!snapshot.length) return;
+    const row = await knexInstance('instances').select('env_variables').where({hash}).first();
+    if (!row) return;
+    const stored = parseStoredEnv(row.env_variables);
+    const secretSnapshot = Array.from(new Set([...stored.secretSnapshot, ...snapshot]));
+    await knexInstance('instances')
+        .where({hash})
+        .update({env_variables: JSON.stringify({variables: stored.variables, secretSnapshot})});
+    registerSecretValues(secretSnapshot);
+}
+
+const mapInstanceRow = (row: InstanceRow): Instance => {
+    const env = parseStoredEnv(row.env_variables);
+    registerSecretValues(env.secretSnapshot);
+    const instance: Instance = {
+        branch: row.branch,
+        commit: row.commit || undefined,
+        project: row.project,
+        vcs: row.vcs,
+        urlTemplate: row.url_template || undefined,
+        status: row.status,
+        instanceConfigName: row.instance_config_name,
+        hash: row.hash || '',
+        description: row.description || '',
+        createdAt: row.created,
+        envVariables: _.isEmpty(env.variables) ? undefined : env.variables,
+        labels: _.isEmpty(row.labels) ? undefined : JSON.parse(row.labels as string),
+        runEnvVariables: _.isEmpty(row.run_env_variables)
+            ? undefined
+            : JSON.parse(row.run_env_variables as string),
+        stopTimeout: row.stop_timeout || undefined,
+        lastActivityAt: row.last_activity_at ? Number(row.last_activity_at) : undefined,
+    };
+    registerSecrets(instance);
+    return instance;
+};
 
 export async function listInstances(): Promise<Instance[]> {
     const result = await knexInstance('instances').select().orderBy('created', 'asc');
@@ -117,10 +183,13 @@ export async function countGeneratingInstances(): Promise<number> {
 }
 
 export async function listInstanceBuildLogs(hash: string): Promise<InstanceBuildLogsRow[]> {
-    return knexInstance('instance_build_logs')
+    registerSecrets(getGlobalFarmConfig());
+    registerSecrets(await getInstance(hash));
+    const logs = await knexInstance('instance_build_logs')
         .select()
         .where({hash: hash})
         .orderBy('created', 'asc');
+    return maskLogFragments(logs);
 }
 
 export async function clearInstanceData(hash: string): Promise<void> {
@@ -129,6 +198,8 @@ export async function clearInstanceData(hash: string): Promise<void> {
 }
 
 export async function clearInstanceBuildLogs(hash: string): Promise<void> {
+    await pendingLogWrites.get(hash)?.catch(() => undefined);
+    logRedactors.delete(hash);
     await knexInstance('instance_build_logs').where({hash}).del();
 }
 
@@ -152,23 +223,7 @@ export async function getInstance(hash: string): Promise<Instance | undefined> {
         return undefined;
     }
 
-    return {
-        instanceConfigName: result.instance_config_name,
-        project: result.project,
-        branch: result.branch,
-        commit: result.commit || undefined,
-        vcs: result.vcs,
-        urlTemplate: result.url_template || undefined,
-        status: result.status,
-        createdAt: result.created,
-        hash: result.hash,
-        envVariables: result.env_variables ? JSON.parse(result.env_variables) : {},
-        runEnvVariables: result.run_env_variables ? JSON.parse(result.run_env_variables) : {},
-        labels: result.labels ? JSON.parse(result.labels) : {},
-        description: result.description || '',
-        stopTimeout: result.stop_timeout || undefined,
-        lastActivityAt: result.last_activity_at ? Number(result.last_activity_at) : undefined,
-    };
+    return mapInstanceRow(result);
 }
 
 export async function getInstancesByHashes(hashes: string[]): Promise<Instance[]> {
@@ -197,4 +252,14 @@ export async function getInstancesByTTL(ttl: number): Promise<Instance[]> {
         .orderBy('created', 'asc');
 
     return result.map(mapInstanceRow);
+}
+
+export async function finishInstanceLogs(hash: string): Promise<void> {
+    await pendingLogWrites.get(hash)?.catch(() => undefined);
+    const redactor = logRedactors.get(hash);
+    if (!redactor) return;
+    const tail = redactor.finish();
+    if (tail.stdout || tail.stderr)
+        await insertInstanceLogs(hash, [{...tail, command: null, duration: null, code: 0}]);
+    logRedactors.delete(hash);
 }

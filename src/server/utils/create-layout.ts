@@ -8,9 +8,10 @@ import {getNodeKit} from '../components/node-kit';
 import type {FarmServerConfigType} from '../configs/common';
 
 import {getGlobalFarmConfig} from './common';
+import {maskSecrets} from './secret-env';
 
 const farmConfig = getGlobalFarmConfig();
-const envConfigJson = JSON.stringify(farmConfig);
+const envConfigJson = JSON.stringify(maskSecrets(farmConfig));
 
 const renderLayout = createRenderFunction([
     createLayoutPlugin({
