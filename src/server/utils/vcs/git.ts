@@ -1,15 +1,17 @@
 import nodeFs from 'node:fs';
 
 import type {Request} from '@gravity-ui/expresskit';
+import axios from 'axios';
 
+import type {ListBranchesRequest} from '../../../shared/api/listBranches';
 import {isCommitHash} from '../../../shared/commit';
 import type {Output, VcsCredentialsConfig} from '../../../shared/common';
 import {TEMP_PATH, WORKDIR_PATH} from '../../constants';
 import {executeRun} from '../async';
 import {buildPath, getAllProjectNames, getProjectFarmConfig} from '../common';
-import {farmAxios} from '../envAxios';
 import type {FarmProjectConfig} from '../farmJsonConfig';
 
+import {listRecentRefs} from './recent-refs';
 import type {
     CommonPullRequestData,
     GetProjectConfigParams,
@@ -46,21 +48,31 @@ export class GitVcs implements Vcs {
         const checkoutRef = this.getCheckoutRef({branch, commit});
 
         const targetDir = `${WORKDIR_PATH}/${instanceDir}`;
-        let command = `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${targetDir}`;
+        const explicitBranch = branch.startsWith('refs/heads/');
+        const branchName = explicitBranch ? branch.slice('refs/heads/'.length) : branch;
+        const repositoryUrl = `${projectRepoUrl}/${repositoryPath}.git`;
+        let command = `git clone --depth 1 -b ${quote(branchName)} -- ${quote(repositoryUrl)} ${quote(targetDir)}`;
 
         if (commit) {
             command = `
-                git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${targetDir} &&
-                cd ${targetDir} &&
-                git fetch --depth 1 origin ${checkoutRef} &&
-                git checkout --detach ${checkoutRef}
+                git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(targetDir)} &&
+                cd ${quote(targetDir)} &&
+                git fetch --depth 1 origin ${quote(checkoutRef)} &&
+                git checkout --detach ${quote(checkoutRef)}
             `;
-        } else if (branch.startsWith('pull/')) {
+        } else if (!explicitBranch && branch.startsWith('refs/tags/')) {
             command = `
-                git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${targetDir} &&
-                cd ${targetDir} &&
-                git fetch origin ${branch}:${instanceDir} &&
-                git checkout ${instanceDir}
+                git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(targetDir)} &&
+                cd ${quote(targetDir)} &&
+                git fetch --depth 1 origin ${quote(branch)} &&
+                git checkout --detach FETCH_HEAD
+            `;
+        } else if (!explicitBranch && branch.startsWith('pull/')) {
+            command = `
+                git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(targetDir)} &&
+                cd ${quote(targetDir)} &&
+                git fetch origin ${quote(`${branch}:${instanceDir}`)} &&
+                git checkout ${quote(instanceDir)}
             `;
         }
 
@@ -83,22 +95,27 @@ export class GitVcs implements Vcs {
         const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
         const checkoutRef = this.getCheckoutRef({branch, commit});
 
+        const explicitBranch = branch.startsWith('refs/heads/');
+        const branchName = explicitBranch ? branch.slice('refs/heads/'.length) : branch;
+        const tag = !explicitBranch && branch.startsWith('refs/tags/');
+        const repositoryUrl = `${projectRepoUrl}/${repositoryPath}.git`;
+
         return [
             `mkdir -p /${TEMP_PATH}`,
             `cd /${TEMP_PATH}`,
-            `mkdir -p '${repositoryPath}'`,
-            commit
-                ? `git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`
-                : `git clone --depth 1 -b ${checkoutRef} ${projectRepoUrl}/${repositoryPath}.git ${repositoryPath}`,
-            ...(commit
+            `mkdir -p ${quote(repositoryPath)}`,
+            commit || tag
+                ? `git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(repositoryPath)}`
+                : `git clone --depth 1 -b ${quote(branchName)} -- ${quote(repositoryUrl)} ${quote(repositoryPath)}`,
+            ...(commit || tag
                 ? [
-                      `cd '${repositoryPath}'`,
-                      `git fetch --depth 1 origin ${commit}`,
-                      `git checkout --detach ${commit}`,
+                      `cd ${quote(repositoryPath)}`,
+                      `git fetch --depth 1 origin ${quote(checkoutRef)}`,
+                      `git checkout --detach ${commit ? quote(checkoutRef) : 'FETCH_HEAD'}`,
                       `cd /${TEMP_PATH}`,
                   ]
                 : []),
-            `cd '${instancePath}'`,
+            `cd ${quote(instancePath)}`,
         ];
     }
 
@@ -119,7 +136,10 @@ export class GitVcs implements Vcs {
 
         const project = data.repository.full_name.split('/')[1];
         const title = data.pull_request.title;
-        const branch = data.pull_request.head.ref;
+        const headBranch = data.pull_request.head.ref;
+        const branch = /^refs\/(tags|heads)\//.test(headBranch)
+            ? `refs/heads/${headBranch}`
+            : headBranch;
         const description = data.pull_request.body || '';
         const baseBranch = data.pull_request.base.ref;
         const merged = data.pull_request.merged;
@@ -227,75 +247,27 @@ export class GitVcs implements Vcs {
         }
     };
 
-    async listBranches(projectName: string): Promise<string[]> {
+    async listBranches(
+        projectName: string,
+        options: Pick<ListBranchesRequest, 'refType' | 'query'> = {},
+    ): Promise<string[]> {
         const projectConfig = getProjectFarmConfig(projectName);
         const vcsConfig = projectConfig.vcsCredentials?.git ?? {};
         const hostname = vcsConfig.hostname || defaultHostname;
 
-        if (hostname.includes('github')) {
-            const token = getGitToken(vcsConfig);
-            if (!token) {
-                throw new Error('git token is not defined');
-            }
-            return this.getBranchesViaGithubAPI({
+        if (!hostname.includes('github')) return [];
+        const token = getGitToken(vcsConfig);
+        if (!token) throw new Error('git token is not defined');
+        return listRecentRefs(
+            {
+                ...options,
                 token,
-                hostname: hostname,
+                hostname,
                 repositoryPath: projectConfig.repositoryPath,
-            });
-        }
-
-        /*
-         * todo:
-         * Rough algorithm: checkout repository then fetch and list branches.
-         *
-         * Command to list branches:
-         * git branch -r --format='%(refname:short)' | jq -R -s 'split("\n")[:-1]'
-         * This command requires jq so it should be installed on environment with farm.
-         *
-         * Maybe it is possible to parse raw 'git branch -r' output to remove
-         * jq dependency.
-         *
-         * Tried to do so but got only two branches instead of about hundred.
-         * Couldn't find out the reason of such behavior. Also on working VM hadn't
-         * such problem because 'git branch -r' returns all known branches.
-         * Tried on sourcecraft repository using https and ssh connection.
-         */
-
-        return Promise.resolve([]);
-    }
-
-    /**
-     * @deprecated
-     * Delete after cli implementation
-     */
-    private async getBranchesViaGithubAPI(params: {
-        token: string;
-        hostname: string;
-        repositoryPath: string;
-    }): Promise<string[]> {
-        const headers = {
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-            Authorization: `Bearer ${params.token}`,
-        };
-
-        let branches: string[] = [];
-        for (let page = 1; ; page++) {
-            const {data} = await farmAxios<
-                Array<{
-                    name: string;
-                }>
-            >({
-                method: 'GET',
-                url: `https://api.${params.hostname || defaultHostname}/repos/${params.repositoryPath}/branches?page=${page}`,
-                headers,
-            });
-
-            if (!data.length) break;
-            branches = branches.concat(data.map((b) => b.name));
-        }
-
-        return branches;
+                defaultBranch: projectConfig.defaultBranch,
+            },
+            axios,
+        );
     }
 
     getProjectRepoUrl(projectName: string): string {
@@ -338,4 +310,8 @@ function getGitToken(config: VcsCredentialsConfig): string | undefined {
 
 function getRandom() {
     return String(Math.floor(Math.random() * 9000 + 1000));
+}
+
+function quote(value: string) {
+    return "'" + value.replace(/'/g, "'\\''") + "'";
 }

@@ -4,7 +4,7 @@ import {getProjectFarmConfig, wrapInternalError} from '../../utils/common';
 import {getVcs} from '../../utils/vcs';
 
 const listBranches: ApiAction<ListBranchesRequest, ListBranchesResponse> = async ({
-    data: {project},
+    data: {project, refType, query},
     ctx,
 }) => {
     try {
@@ -13,7 +13,7 @@ const listBranches: ApiAction<ListBranchesRequest, ListBranchesResponse> = async
             return {ok: false, message: 'Project does not have a VCS'};
         }
         const vcsProvider = getVcs(projectConfig.vcs);
-        const branches = await vcsProvider.listBranches(project);
+        const branches = await vcsProvider.listBranches(project, {refType, query});
 
         return {
             ok: true,

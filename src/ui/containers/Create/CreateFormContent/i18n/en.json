@@ -6,5 +6,10 @@
   "instance-config": "Instance config",
   "variables": "Environment variables",
   "run-variables": "Runtime environment variables",
-  "labels": "Labels"
+  "labels": "Labels",
+  "branches": "Branches",
+  "tags": "Tags",
+  "ref-search": "Enter an exact branch or tag name",
+  "ref-error": "Could not load references",
+  "ref-empty": "No matching references"
 }

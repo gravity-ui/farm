@@ -12,7 +12,7 @@ import {EditorField} from '../../../components/Fields/EditorField/EditorField';
 import {SelectField} from '../../../components/Fields/SelectField/SelectField';
 import {TextField} from '../../../components/Fields/TextField/TextField';
 import {VariablesFieldRow} from '../../../components/Fields/VariablesFieldRow/VariablesFieldRow';
-import {getInstancesConfigsSource, listBranchesSource} from '../../../data-sources';
+import {getInstancesConfigsSource} from '../../../data-sources';
 import {useDebouncedValue} from '../../../hooks/useDebouncedValue';
 import {ci18n} from '../../../i18n-common/ci18n';
 import {toaster} from '../../../services/toaster';
@@ -24,6 +24,12 @@ import {
 import {makeFieldRequired} from '../../../utils/validation';
 import type {FormValue} from '../types';
 
+import {
+    LegacyBranchSelector,
+    RefSelector,
+    encodeBranchRef,
+    supportsRefSelector,
+} from './RefSelector';
 import {i18n} from './i18n';
 
 interface FormContentProps extends FormRenderProps<FormValue> {}
@@ -42,7 +48,9 @@ export const CreateFormContent = ({
             values: true,
         },
     });
-    const branchesParams = useDebouncedValue({project}, [project]);
+    const [refReady, setRefReady] = React.useState(false);
+    const useRefSelector = supportsRefSelector(getProjectFarmConfig(project));
+    const selectionReady = !useRefSelector || refReady;
     const instanceConfigsParams = useDebouncedValue(
         {
             project,
@@ -52,18 +60,15 @@ export const CreateFormContent = ({
         [project, branch, vcs],
     );
 
-    const branchesQuery = useQueryData(listBranchesSource, branchesParams);
-    const instanceConfigsQuery = useQueryData(getInstancesConfigsSource, instanceConfigsParams);
-
-    const branchesOptions = React.useMemo(
-        () =>
-            branchesQuery.data?.map((br) => ({
-                value: br,
-                content: br,
-            })) ?? [],
-
-        [branchesQuery.data],
-    );
+    const instanceConfigsQuery = useQueryData(getInstancesConfigsSource, {
+        ...instanceConfigsParams,
+        branch:
+            selectionReady &&
+            instanceConfigsParams.project === project &&
+            instanceConfigsParams.branch === branch
+                ? branch
+                : '',
+    });
 
     const projectOptions = React.useMemo(() => {
         const projects = getGlobalFarmConfig().projects;
@@ -90,21 +95,6 @@ export const CreateFormContent = ({
         () => !isEmpty(instanceConfigNameOptions),
         [instanceConfigNameOptions],
     );
-
-    React.useEffect(() => {
-        if (branchesQuery.error) {
-            toaster.add({
-                name: 'branches-error',
-                title: ci18n('error-title'),
-                content: getErrorMessageFromAxios(
-                    branchesQuery.error as AxiosError<{message?: string}>,
-                ),
-                theme: 'danger',
-            });
-        } else {
-            toaster.remove('branches-error');
-        }
-    }, [branchesQuery.error]);
 
     React.useEffect(() => {
         if (instanceConfigsQuery.error) {
@@ -146,16 +136,28 @@ export const CreateFormContent = ({
                     formApi.change('vcs', projectVCS);
                 }
 
-                if (projectBranch) {
-                    formApi.change('branch', projectBranch);
-                }
+                formApi.change(
+                    'branch',
+                    supportsRefSelector(projectFarmConfig)
+                        ? encodeBranchRef(projectBranch || '')
+                        : projectBranch || '',
+                );
+                setRefReady(false);
             });
         },
         [formApi],
     );
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form
+            onSubmit={(event) => {
+                if (!selectionReady) {
+                    event.preventDefault();
+                    return;
+                }
+                return handleSubmit(event);
+            }}
+        >
             <div className={sp({mt: 8})} style={{width: '500px'}}>
                 <FormRow label={i18n('project-name')} required>
                     <SelectField
@@ -166,10 +168,10 @@ export const CreateFormContent = ({
                 </FormRow>
 
                 <FormRow label={i18n('branch')} required>
-                    {isEmpty(branchesOptions) ? (
-                        <TextField name="branch" />
+                    {useRefSelector ? (
+                        <RefSelector project={project} onReadyChange={setRefReady} />
                     ) : (
-                        <SelectField name="branch" options={branchesOptions} />
+                        <LegacyBranchSelector key={project} project={project} />
                     )}
                 </FormRow>
 
@@ -201,10 +203,8 @@ export const CreateFormContent = ({
                     view="action"
                     size="l"
                     type="submit"
-                    loading={
-                        submitting || instanceConfigsQuery.isLoading || branchesQuery.isLoading
-                    }
-                    disabled={hasSubmitErrors || hasValidationErrors}
+                    loading={submitting || instanceConfigsQuery.isLoading}
+                    disabled={hasSubmitErrors || hasValidationErrors || !selectionReady}
                     className={spacing({mt: 8})}
                 >
                     {ci18n('create')}
