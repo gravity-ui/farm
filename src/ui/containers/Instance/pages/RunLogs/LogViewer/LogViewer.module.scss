@@ -15,18 +15,12 @@
     }
 }
 
-.header {
-    font-size: 16px;
-}
-
 .label {
     display: inline-flex;
     margin-right: 8px;
 }
 
 .control {
-    margin-right: 8px;
-
     &:global(.textinput__control) {
         padding: 5px;
     }
@@ -38,10 +32,12 @@
 
 .fields {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-start;
     align-items: center;
+    gap: var(--g-spacing-2);
     font-size: 16px;
-    height: 24px;
+    min-height: 24px;
     line-height: 24px;
     padding: 2px 0;
     margin: 6px 0;
@@ -51,4 +47,23 @@
     display: inline-block;
     pointer-events: all;
     user-select: initial;
+}
+
+.filterGroup {
+    display: flex;
+    align-items: center;
+    flex: 1 1 340px;
+    min-width: 0;
+}
+
+.filterControl {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.sizeGroup {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 0;
 }
