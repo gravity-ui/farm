@@ -11,24 +11,7 @@ const palette = [
     'var(--g-color-text-primary)',
 ];
 
-function severityColor(line: string): string | undefined {
-    let level: unknown;
-    try {
-        const parsed: unknown = JSON.parse(line);
-        if (parsed && typeof parsed === 'object' && 'level' in parsed) {
-            level = parsed.level;
-        }
-    } catch {
-        level = line.match(
-            /^\s*(?:\[[^\]]+\]\s*)?\[?(TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL)\b/i,
-        )?.[1];
-    }
-    if (typeof level === 'number') {
-        if (level >= 50) return palette[1];
-        if (level >= 40) return palette[3];
-        if (level >= 30) return palette[4];
-        return palette[0];
-    }
+function namedSeverityColor(level: unknown): string | undefined {
     if (typeof level !== 'string') return undefined;
     switch (level.toLowerCase()) {
         case 'fatal':
@@ -45,6 +28,45 @@ function severityColor(line: string): string | undefined {
         default:
             return undefined;
     }
+}
+
+function severityColor(line: string): string | undefined {
+    let level: unknown;
+    try {
+        const parsed: unknown = JSON.parse(line);
+        if (parsed && typeof parsed === 'object') {
+            if ('levelStr' in parsed) {
+                const color = namedSeverityColor(parsed.levelStr);
+                if (color) return color;
+            }
+            if ('level' in parsed) level = parsed.level;
+        }
+    } catch {
+        level = line.match(
+            /^\s*(?:\[[^\]]+\]\s*)?\[?(TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL)\b/i,
+        )?.[1];
+    }
+    if (typeof level === 'number') {
+        switch (level) {
+            case 40000:
+            case 60:
+            case 50:
+                return palette[1];
+            case 30000:
+            case 40:
+                return palette[3];
+            case 20000:
+            case 30:
+                return palette[4];
+            case 10000:
+            case 20:
+            case 10:
+                return palette[0];
+            default:
+                return undefined;
+        }
+    }
+    return namedSeverityColor(level);
 }
 
 export function LogText({text}: {text: string}) {

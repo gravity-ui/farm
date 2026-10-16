@@ -54,3 +54,36 @@ test('extended color payloads do not become separate formatting commands', () =>
     const html = render('\x1b[38;5;31mtext\x1b[0m');
     assert.equal(html, '<span>text</span>');
 });
+
+test('named JSON levels take precedence over numeric logger scales', () => {
+    for (const [level, levelStr, color] of [
+        [20000, 'INFO', 'info'],
+        [40000, 'ERROR', 'danger'],
+        [50, 'WARN', 'warning'],
+        [20000, 'DEBUG', 'secondary'],
+    ]) {
+        const line = JSON.stringify({level, levelStr, msg: 'example'});
+        assert.match(render(line), new RegExp(`--g-color-text-${color}`));
+    }
+    assert.match(render('{"level":30,"levelStr":"unknown"}'), /--g-color-text-info/);
+});
+
+test('Pino and NodeKit numeric severity uses known levels and leaves unknown scales uncolored', () => {
+    for (const [level, color] of [
+        [10, 'secondary'],
+        [20, 'secondary'],
+        [30, 'info'],
+        [40, 'warning'],
+        [50, 'danger'],
+        [60, 'danger'],
+        [10000, 'secondary'],
+        [20000, 'info'],
+        [30000, 'warning'],
+        [40000, 'danger'],
+    ]) {
+        assert.match(render(JSON.stringify({level})), new RegExp(`--g-color-text-${color}`));
+    }
+    for (const level of [0, 70, 2000, 50000]) {
+        assert.ok(!render(JSON.stringify({level})).includes('color:'));
+    }
+});
