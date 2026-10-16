@@ -9,7 +9,9 @@ import {executeRun} from '../async';
 import {buildPath, getAllProjectNames, getProjectFarmConfig} from '../common';
 import {farmAxios} from '../envAxios';
 import type {FarmProjectConfig} from '../farmJsonConfig';
+import {redactGitLog} from '../redact-git-logs';
 
+import {quoteGitArgument as quote, withGitCredentials} from './git-credentials';
 import type {
     CommonPullRequestData,
     GetProjectConfigParams,
@@ -42,35 +44,34 @@ export class GitVcs implements Vcs {
     async checkout({project, branch, commit, instanceDir}: VcsCheckoutProps) {
         const {repositoryPath, vcsCredentials} = getProjectFarmConfig(project);
         const vcsConfig = vcsCredentials?.git ?? {};
-        const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
-        const checkoutRef = this.getCheckoutRef({branch, commit});
-
-        const targetDir = `${WORKDIR_PATH}/${instanceDir}`;
-        let command = `git clone --depth 1 -b ${branch} ${projectRepoUrl}/${repositoryPath}.git ${targetDir}`;
-
-        if (commit) {
-            command = `
-                git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${targetDir} &&
-                cd ${targetDir} &&
-                git fetch --depth 1 origin ${checkoutRef} &&
-                git checkout --detach ${checkoutRef}
-            `;
-        } else if (branch.startsWith('pull/')) {
-            command = `
-                git clone --depth 1 ${projectRepoUrl}/${repositoryPath}.git ${targetDir} &&
-                cd ${targetDir} &&
-                git fetch origin ${branch}:${instanceDir} &&
-                git checkout ${instanceDir}
-            `;
+        const hostname = vcsConfig.hostname || defaultHostname;
+        const authority = hostname.split(':');
+        if (
+            authority.length > 2 ||
+            !/^[A-Za-z0-9.-]+$/.test(authority[0]) ||
+            (authority.length === 2 && !/^[0-9]+$/.test(authority[1]))
+        ) {
+            throw new Error('Unsupported git hostname');
         }
-
+        const projectRepoUrl = `https://${hostname}/${repositoryPath}.git`;
+        const checkoutRef = this.getCheckoutRef({branch, commit});
+        const targetDir = `${WORKDIR_PATH}/${instanceDir}`;
+        const git = 'git -c credential.helper= -c credential.username=x-access-token';
+        let command = `${git} clone --depth 1 -b ${quote(branch)} -- ${quote(projectRepoUrl)} ${quote(targetDir)}`;
+        if (commit) {
+            command = `${git} clone --depth 1 -- ${quote(projectRepoUrl)} ${quote(targetDir)} &&
+                cd ${quote(targetDir)} &&
+                ${git} fetch --depth 1 origin ${quote(checkoutRef)} &&
+                git checkout --detach ${quote(checkoutRef)}`;
+        } else if (branch.startsWith('pull/')) {
+            command = `${git} clone --depth 1 -- ${quote(projectRepoUrl)} ${quote(targetDir)} &&
+                cd ${quote(targetDir)} &&
+                ${git} fetch origin ${quote(`${branch}:${instanceDir}`)} &&
+                git checkout ${quote(instanceDir)}`;
+        }
         const output: Output[] = [];
-
-        await executeRun(command, undefined, (o) => {
-            if (o.command) {
-                o.command = filterToken(o.command, vcsConfig);
-            }
-            output.push(o);
+        await withGitCredentials(hostname, getGitToken(vcsConfig), async (env) => {
+            await executeRun(command, {env}, (log) => output.push(redactGitLog(log)));
         });
 
         return output;
@@ -305,11 +306,6 @@ export class GitVcs implements Vcs {
 
         return `https://${hostname}/${projectConfig.repositoryPath}`;
     }
-}
-
-function filterToken(output: string, config: VcsCredentialsConfig) {
-    const tokenValue = getGitToken(config);
-    return tokenValue ? output.replace(tokenValue, 'GIT_REPOSITORY_TOKEN') : output;
 }
 
 /**
