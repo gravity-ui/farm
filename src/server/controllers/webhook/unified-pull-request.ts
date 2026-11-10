@@ -13,7 +13,7 @@ import {
     wrapInternalError,
 } from '../../utils/common';
 import {getInstanceDescription} from '../../utils/common-db';
-import {getInstance, getProjectInstancesByBranch, listInstances} from '../../utils/db';
+import {getInstance, listInstances} from '../../utils/db';
 import {fetchProjectConfig} from '../../utils/farmJsonConfig';
 import type {CommonPullRequestData} from '../../utils/vcs/vcs';
 
@@ -65,10 +65,7 @@ export async function handleUnifiedPullRequest(
             }
 
             const instanceHashMap = new Map<string, string>();
-            const instances = await listInstances();
-            const projectInstances = instances.filter(
-                (instance) => instance.project === commonData.project,
-            );
+            const projectInstances = await listInstances({project: commonData.project});
 
             const instanceDescriptions = await runAll(configFile.preview, (instanceConfig) =>
                 getInstanceDescription({
@@ -173,10 +170,10 @@ export async function handleUnifiedPullRequest(
                 }
             }
         } else if (commonData.action === 'closed') {
-            const branchInstances = await getProjectInstancesByBranch(
-                commonData.project,
-                commonData.branch,
-            );
+            const branchInstances = await listInstances({
+                project: commonData.project,
+                branch: commonData.branch,
+            });
             const finalLabels = labels ? filterEmptyObjectEntries(labels) : undefined;
             const instances =
                 filterInstancesByLabels(branchInstances, finalLabels, uniqByLabels) ??

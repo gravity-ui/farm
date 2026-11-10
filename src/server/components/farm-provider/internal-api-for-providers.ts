@@ -9,7 +9,7 @@ export function getFarmInternalAPI(): FarmInternalApi {
     if (!farmInternalApiInstance) {
         farmInternalApiInstance = {
             getExternalInstance: getInstance,
-            getExternalInstances: listInstances,
+            getExternalInstances: () => listInstances(),
             log: getNodeKit().ctx.log.bind(getNodeKit().ctx),
             logError: getNodeKit().ctx.logError.bind(getNodeKit().ctx),
         };
