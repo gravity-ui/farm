@@ -1,7 +1,6 @@
 import nodeFs from 'node:fs';
 
 import type {Request} from '@gravity-ui/expresskit';
-import axios from 'axios';
 
 import type {ListBranchesRequest} from '../../../shared/api/listBranches';
 import {isCommitHash} from '../../../shared/commit';
@@ -11,7 +10,7 @@ import {executeRun} from '../async';
 import {buildPath, getAllProjectNames, getProjectFarmConfig} from '../common';
 import type {FarmProjectConfig} from '../farmJsonConfig';
 
-import {listRecentRefs} from './recent-refs';
+import {listGithubRecentRefs} from './github-recent-refs';
 import type {
     CommonPullRequestData,
     GetProjectConfigParams,
@@ -258,16 +257,13 @@ export class GitVcs implements Vcs {
         if (!hostname.includes('github')) return [];
         const token = getGitToken(vcsConfig);
         if (!token) throw new Error('git token is not defined');
-        return listRecentRefs(
-            {
-                ...options,
-                token,
-                hostname,
-                repositoryPath: projectConfig.repositoryPath,
-                defaultBranch: projectConfig.defaultBranch,
-            },
-            axios,
-        );
+        return listGithubRecentRefs({
+            ...options,
+            token,
+            hostname,
+            repositoryPath: projectConfig.repositoryPath,
+            defaultBranch: projectConfig.defaultBranch,
+        });
     }
 
     getProjectRepoUrl(projectName: string): string {

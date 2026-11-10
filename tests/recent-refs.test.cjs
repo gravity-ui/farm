@@ -2,8 +2,28 @@
 
 const assert = require('node:assert/strict');
 const {test} = require('node:test');
+let clockOffset = 0;
+const realNow = performance.now.bind(performance);
+Object.defineProperty(performance, 'now', {value: () => realNow() + clockOffset});
 require('ts-node/register');
-const {listRecentRefs} = require('../src/server/utils/vcs/recent-refs.ts');
+const axios = require('axios');
+let currentRequest;
+axios.defaults.adapter = async (options) => {
+    options.method = options.method.toUpperCase();
+    if (typeof options.data === 'string') options.data = JSON.parse(options.data);
+    return {
+        config: options,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        ...(await currentRequest(options)),
+    };
+};
+const {listGithubRecentRefs} = require('../src/server/utils/vcs/github-recent-refs.ts');
+const listRecentRefs = (params, request) => {
+    currentRequest = request;
+    return listGithubRecentRefs(params);
+};
 const listRecentBranches = (params, request) =>
     listRecentRefs({...params, refType: 'branch'}, request);
 let sequence = 0;
@@ -76,13 +96,9 @@ test('deduplicates in flight calls and caches copied results for 60 seconds', as
         second,
     );
     assert.equal(calls.length, 2);
-    const now = Date.now;
-    Date.now = () => now() + 61_000;
-    try {
-        await listRecentBranches(params, request);
-    } finally {
-        Date.now = now;
-    }
+    clockOffset += 61_000;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await listRecentBranches(params, request);
     assert.equal(calls.length, 4);
 });
 
@@ -237,7 +253,7 @@ test('rejects invalid ref types and queries before requesting and sanitizes Grap
                 data: {errors: [{message: 'secret-token'}]},
             })),
             (error) => {
-                assert.equal(error.message, 'Failed to list recent refs');
+                assert.equal(error.message, 'Failed to list recent refs (GraphQL)');
                 assert.ok(!error.stack.includes('secret-token'));
                 assert.equal(error.cause, undefined);
                 return true;
@@ -265,4 +281,80 @@ test('bounds exact search cache and refetches evicted entries', async () => {
     assert.equal(calls, 151);
     await listRecentRefs({...params, query: 'old-0'}, request);
     assert.equal(calls, 152);
+});
+
+test('does not cache exact misses so newly pushed refs are found immediately', async () => {
+    const params = {...parameters(), query: 'new-branch'};
+    let calls = 0;
+    const request = async () => {
+        calls++;
+        return {data: {data: {repository: {ref: calls === 1 ? null : {name: params.query}}}}};
+    };
+    assert.deepEqual(await listRecentRefs(params, request), []);
+    assert.deepEqual(await listRecentRefs(params, request), ['new-branch']);
+    assert.equal(calls, 2);
+});
+
+test('reports only safe HTTP and timeout diagnostics', async () => {
+    for (const [extra, detail] of [
+        [{response: {status: 403}}, 'HTTP 403'],
+        [{code: 'ECONNABORTED'}, 'timeout'],
+    ]) {
+        await assert.rejects(
+            listRecentRefs(parameters(), async () => {
+                throw Object.assign(new Error('secret-token'), {
+                    isAxiosError: true,
+                    config: {headers: {Authorization: 'secret-token'}},
+                    ...extra,
+                });
+            }),
+            (error) => {
+                assert.equal(error.message, `Failed to list recent refs (${detail})`);
+                assert.equal(error.cause, undefined);
+                assert.equal(error.config, undefined);
+                assert.ok(!error.stack.includes('secret-token'));
+                return true;
+            },
+        );
+    }
+});
+
+test('returns HTTP 400 for invalid API parameters before resolving projects or providers', async () => {
+    const Module = require('node:module');
+    const originalLoad = Module._load;
+    Module._load = function (id, parent, ...args) {
+        if (parent?.filename.endsWith('/api-actions/listBranches.ts')) {
+            if (id === '../../utils/common') {
+                return {getProjectFarmConfig: () => assert.fail('unexpected project lookup')};
+            }
+            if (id === '../../utils/vcs') {
+                return {getVcs: () => assert.fail('unexpected provider lookup')};
+            }
+        }
+        return originalLoad.call(this, id, parent, ...args);
+    };
+    let action;
+    try {
+        action = require('../src/server/components/api-actions/listBranches.ts').default;
+    } finally {
+        Module._load = originalLoad;
+    }
+    for (const data of [
+        undefined,
+        null,
+        {},
+        {project: ''},
+        {project: 1},
+        {project: 'sample', refType: 'commit'},
+        {project: 'sample', refType: null},
+        {project: 'sample', query: 1},
+        {project: 'sample', query: null},
+        {project: 'sample', query: 'x'.repeat(1025)},
+    ]) {
+        assert.deepEqual(await action({data, ctx: {}}), {
+            ok: false,
+            message: 'Invalid request parameters',
+            status: 400,
+        });
+    }
 });

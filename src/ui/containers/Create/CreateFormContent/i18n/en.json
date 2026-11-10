@@ -11,5 +11,9 @@
   "tags": "Tags",
   "ref-search": "Enter an exact branch or tag name",
   "ref-error": "Could not load references",
-  "ref-empty": "No matching references"
+  "ref-empty": "No matching references",
+  "manual-branch": "Enter branch name manually",
+  "manual-tag": "Enter tag name manually",
+  "ref-manual": "Enter manually",
+  "ref-retry": "Retry loading references"
 }

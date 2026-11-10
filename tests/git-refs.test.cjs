@@ -80,7 +80,6 @@ test('PM2 and Kubernetes checkout distinguish tags from branches with reserved p
         const constants = {WORKDIR_PATH: work, TEMP_PATH: path.join(root, 'k8s')};
         const GitVcs = loadGit({
             'node:fs': fs,
-            axios: {},
             '../../../shared/commit': {isCommitHash: (value) => /^[a-f0-9]{40}$/.test(value)},
             '../../constants': constants,
             '../async': {executeRun: async (command) => execute(command)},
@@ -94,7 +93,7 @@ test('PM2 and Kubernetes checkout distinguish tags from branches with reserved p
                 }),
             },
             './vcs': {getCheckoutRef: ({branch, commit}) => commit || branch},
-            './recent-refs': {},
+            './github-recent-refs': {},
         });
         const vcs = new GitVcs();
         const refs = [
@@ -151,6 +150,7 @@ test('reference API forwards ref type and exact query to the VCS provider', asyn
             exports: module.exports,
             module,
             require(name) {
+                if (name === 'zod') return require('zod');
                 if (name === '../../utils/common')
                     return {
                         getProjectFarmConfig: () => ({vcs: 'git'}),

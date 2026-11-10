@@ -49,8 +49,8 @@ export const CreateFormContent = ({
         },
     });
     const [refReady, setRefReady] = React.useState(false);
-    const useRefSelector = supportsRefSelector(getProjectFarmConfig(project));
-    const selectionReady = !useRefSelector || refReady;
+    const refSelectorSupported = supportsRefSelector(getProjectFarmConfig(project));
+    const selectionReady = !refSelectorSupported || refReady;
     const instanceConfigsParams = useDebouncedValue(
         {
             project,
@@ -168,8 +168,8 @@ export const CreateFormContent = ({
                 </FormRow>
 
                 <FormRow label={i18n('branch')} required>
-                    {useRefSelector ? (
-                        <RefSelector project={project} onReadyChange={setRefReady} />
+                    {refSelectorSupported ? (
+                        <RefSelector key={project} project={project} onReadyChange={setRefReady} />
                     ) : (
                         <LegacyBranchSelector key={project} project={project} />
                     )}

@@ -2,7 +2,7 @@ import React from 'react';
 
 import {useQueryData} from '@gravity-ui/data-source';
 import {BranchesRight, Tag} from '@gravity-ui/icons';
-import {Button, Icon, Loader, Select, sp} from '@gravity-ui/uikit';
+import {Button, Icon, Loader, Select, TextInput, sp} from '@gravity-ui/uikit';
 import type {AxiosError} from 'axios';
 import {useField} from 'react-final-form';
 
@@ -65,14 +65,17 @@ export const RefSelector = ({project, onReadyChange}: RefSelectorProps) => {
         input.value.startsWith('refs/tags/') ? 'tag' : 'branch',
     );
     const [filter, setFilter] = React.useState('');
+    const [retry, setRetry] = React.useState(0);
+    const [manual, setManual] = React.useState(false);
+    const toasterName = React.useId();
     const [state, setState] = React.useState({
         scope: '',
         query: '',
         names: [] as string[],
         loading: true,
-        error: false,
+        error: null as AxiosError<{message?: string}> | null,
     });
-    const scope = `${project}:${refType}`;
+    const scope = `${project}:${refType}:${retry}`;
     const latestValue = React.useRef(input.value);
     latestValue.current = input.value;
     const previousProject = React.useRef(project);
@@ -85,7 +88,23 @@ export const RefSelector = ({project, onReadyChange}: RefSelectorProps) => {
             : !input.value.startsWith('refs/tags/');
     const loading = !current || state.loading;
     const ready =
-        current && !state.loading && !state.error && validType && state.names.includes(value);
+        current &&
+        !state.loading &&
+        validType &&
+        Boolean(value.trim()) &&
+        (state.error ? manual : state.names.includes(value));
+
+    React.useEffect(() => {
+        if (current && state.error) {
+            toaster.add({
+                name: toasterName,
+                title: i18n('ref-error'),
+                content: getErrorMessageFromAxios(state.error),
+                theme: 'danger',
+            });
+        }
+        return () => toaster.remove(toasterName);
+    }, [current, state.error, toasterName]);
 
     React.useEffect(() => {
         onReadyChange(ready);
@@ -107,7 +126,7 @@ export const RefSelector = ({project, onReadyChange}: RefSelectorProps) => {
             query: filter,
             names: previous.scope === scope && previous.query === filter ? previous.names : [],
             loading: true,
-            error: false,
+            error: null,
         }));
         const timer = setTimeout(
             async () => {
@@ -134,12 +153,18 @@ export const RefSelector = ({project, onReadyChange}: RefSelectorProps) => {
                             query: filter,
                             names: Array.from(new Set(names)),
                             loading: false,
-                            error: false,
+                            error: null,
                         });
                     }
-                } catch {
+                } catch (error) {
                     if (active && sequence.current === request) {
-                        setState({scope, query: filter, names: [], loading: false, error: true});
+                        setState({
+                            scope,
+                            query: filter,
+                            names: [],
+                            loading: false,
+                            error: error as AxiosError<{message?: string}>,
+                        });
                     }
                 }
             },
@@ -155,6 +180,7 @@ export const RefSelector = ({project, onReadyChange}: RefSelectorProps) => {
         if (nextType === refType) {
             return;
         }
+        setManual(false);
         setRefType(nextType);
         setFilter('');
         input.onChange(
@@ -168,45 +194,94 @@ export const RefSelector = ({project, onReadyChange}: RefSelectorProps) => {
     return (
         <div style={{display: 'flex', gap: 'var(--g-spacing-2)', minWidth: 0}}>
             <div style={{flex: 1, minWidth: 0}} aria-busy={loading}>
-                <Select
-                    width="max"
-                    aria-label={i18n(refType === 'branch' ? 'branches' : 'tags')}
-                    value={input.value ? [input.value] : []}
-                    options={(current ? state.names : []).map((name) => ({
-                        value: refType === 'tag' ? `refs/tags/${name}` : encodeBranchRef(name),
-                        content: name,
-                    }))}
-                    placeholder={loading ? <Loader size="s" /> : undefined}
-                    renderSelectedOption={(option) => (
-                        <span
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 'var(--g-spacing-2)',
+                {current && state.error ? (
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 'var(--g-spacing-2)',
+                        }}
+                    >
+                        {manual ? (
+                            <TextInput
+                                aria-label={i18n(
+                                    refType === 'branch' ? 'manual-branch' : 'manual-tag',
+                                )}
+                                placeholder={i18n(
+                                    refType === 'branch' ? 'manual-branch' : 'manual-tag',
+                                )}
+                                value={validType ? value : ''}
+                                onUpdate={(name) =>
+                                    input.onChange(
+                                        refType === 'tag'
+                                            ? name
+                                                ? `refs/tags/${name}`
+                                                : ''
+                                            : encodeBranchRef(name),
+                                    )
+                                }
+                                onFocus={() => input.onFocus()}
+                                onBlur={() => input.onBlur()}
+                            />
+                        ) : (
+                            <Button type="button" onClick={() => setManual(true)}>
+                                {i18n('ref-manual')}
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setManual(false);
+                                setRetry((previous) => previous + 1);
+                                onReadyChange(false);
                             }}
                         >
-                            {loading && <Loader size="s" />}
-                            <span>{option.content ?? decodeRef(option.value)}</span>
-                        </span>
-                    )}
-                    filterable
-                    filter={filter}
-                    onFilterChange={(nextFilter) => {
-                        if (nextFilter !== filter) {
-                            setFilter(nextFilter);
-                            onReadyChange(false);
-                        }
-                    }}
-                    filterOption={(option, query) => !query || option.content === query}
-                    filterPlaceholder={i18n('ref-search')}
-                    loading={loading}
-                    errorMessage={state.error && current ? i18n('ref-error') : undefined}
-                    validationState={state.error && current ? 'invalid' : undefined}
-                    renderEmptyOptions={() => <div className={sp({p: 3})}>{i18n('ref-empty')}</div>}
-                    onUpdate={(values) => input.onChange(values[0] || '')}
-                    onFocus={() => input.onFocus()}
-                    onBlur={() => input.onBlur()}
-                />
+                            {i18n('ref-retry')}
+                        </Button>
+                    </div>
+                ) : (
+                    <Select
+                        width="max"
+                        aria-label={i18n(refType === 'branch' ? 'branches' : 'tags')}
+                        value={input.value ? [input.value] : []}
+                        options={(current ? state.names : []).map((name) => ({
+                            value: refType === 'tag' ? `refs/tags/${name}` : encodeBranchRef(name),
+                            content: name,
+                        }))}
+                        placeholder={loading ? <Loader size="s" /> : undefined}
+                        renderSelectedOption={(option) => (
+                            <span
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 'var(--g-spacing-2)',
+                                }}
+                            >
+                                {loading && <Loader size="s" />}
+                                <span>{option.content ?? decodeRef(option.value)}</span>
+                            </span>
+                        )}
+                        filterable
+                        filter={filter}
+                        onFilterChange={(nextFilter) => {
+                            if (nextFilter !== filter) {
+                                setFilter(nextFilter);
+                                onReadyChange(false);
+                            }
+                        }}
+                        filterOption={(option, query) => !query || option.content === query}
+                        filterPlaceholder={i18n('ref-search')}
+                        loading={loading}
+                        errorMessage={state.error && current ? i18n('ref-error') : undefined}
+                        validationState={state.error && current ? 'invalid' : undefined}
+                        renderEmptyOptions={() => (
+                            <div className={sp({p: 3})}>{i18n('ref-empty')}</div>
+                        )}
+                        onUpdate={(values) => input.onChange(values[0] || '')}
+                        onFocus={() => input.onFocus()}
+                        onBlur={() => input.onBlur()}
+                    />
+                )}
             </div>
             {(['branch', 'tag'] as const).map((type) => (
                 <Button
