@@ -1,30 +1,47 @@
 import React from 'react';
 
-const palette = [
-    'var(--g-color-text-secondary)',
-    'var(--g-color-text-danger)',
-    'var(--g-color-text-positive)',
-    'var(--g-color-text-warning)',
-    'var(--g-color-text-info)',
-    'var(--g-color-text-utility)',
-    'var(--g-color-text-info)',
-    'var(--g-color-text-primary)',
-];
+type AnsiColorCode = 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 90 | 91 | 92 | 93 | 94 | 95 | 96 | 97;
+
+const ANSI_COLORS: Partial<Record<AnsiColorCode, string>> = {
+    30: 'var(--g-color-text-secondary)',
+    31: 'var(--g-color-text-danger)',
+    32: 'var(--g-color-text-positive)',
+    33: 'var(--g-color-text-warning)',
+    34: 'var(--g-color-text-info)',
+    35: 'var(--g-color-text-utility)',
+    36: 'var(--g-color-text-info)',
+    37: 'var(--g-color-text-primary)',
+    90: 'var(--g-color-text-secondary)',
+    91: 'var(--g-color-text-danger)',
+    92: 'var(--g-color-text-positive)',
+    93: 'var(--g-color-text-warning)',
+    94: 'var(--g-color-text-info)',
+    95: 'var(--g-color-text-utility)',
+    96: 'var(--g-color-text-info)',
+    97: 'var(--g-color-text-primary)',
+};
+
+const LEVEL_COLORS = {
+    error: 'var(--g-color-text-danger)',
+    warning: 'var(--g-color-text-warning)',
+    info: 'var(--g-color-text-info)',
+    debug: 'var(--g-color-text-secondary)',
+};
 
 function namedSeverityColor(level: unknown): string | undefined {
     if (typeof level !== 'string') return undefined;
     switch (level.toLowerCase()) {
         case 'fatal':
         case 'error':
-            return palette[1];
+            return LEVEL_COLORS.error;
         case 'warn':
         case 'warning':
-            return palette[3];
+            return LEVEL_COLORS.warning;
         case 'info':
-            return palette[4];
+            return LEVEL_COLORS.info;
         case 'debug':
         case 'trace':
-            return palette[0];
+            return LEVEL_COLORS.debug;
         default:
             return undefined;
     }
@@ -48,20 +65,22 @@ function severityColor(line: string): string | undefined {
     }
     if (typeof level === 'number') {
         switch (level) {
+            case 50000:
             case 40000:
             case 60:
             case 50:
-                return palette[1];
+                return LEVEL_COLORS.error;
             case 30000:
             case 40:
-                return palette[3];
+                return LEVEL_COLORS.warning;
             case 20000:
             case 30:
-                return palette[4];
+                return LEVEL_COLORS.info;
+            case 5000:
             case 10000:
             case 20:
             case 10:
-                return palette[0];
+                return LEVEL_COLORS.debug;
             default:
                 return undefined;
         }
@@ -76,9 +95,9 @@ export function LogText({text}: {text: string}) {
         <React.Fragment>
             {text.split('\n').map((line, lineIndex) => {
                 const children: React.ReactNode[] = [];
-                const severity = line.includes('\u001b[') ? undefined : severityColor(line);
                 // eslint-disable-next-line no-control-regex
-                const sgr = /\u001b\[([0-9;]*)m/g;
+                const csi = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+                const severity = severityColor(line.replace(csi, ''));
                 let start = 0;
                 const append = (end: number) => {
                     if (end > start) {
@@ -86,7 +105,7 @@ export function LogText({text}: {text: string}) {
                             <span
                                 key={children.length}
                                 style={{
-                                    color: color || severity,
+                                    color: severity || color,
                                     fontWeight: bold ? 'bold' : undefined,
                                 }}
                             >
@@ -95,9 +114,12 @@ export function LogText({text}: {text: string}) {
                         );
                     }
                 };
-                for (let match = sgr.exec(line); match; match = sgr.exec(line)) {
+                for (let match = csi.exec(line); match; match = csi.exec(line)) {
                     append(match.index);
-                    const codes = match[1].split(';').map(Number);
+                    start = match.index + match[0].length;
+                    // eslint-disable-next-line no-control-regex
+                    if (!/^\x1b\[[0-9;]*m$/.test(match[0])) continue;
+                    const codes = match[0].slice(2, -1).split(';').map(Number);
                     for (let index = 0; index < codes.length; index++) {
                         const code = codes[index];
                         if (code === 0) {
@@ -109,10 +131,8 @@ export function LogText({text}: {text: string}) {
                             bold = false;
                         } else if (code === 39) {
                             color = undefined;
-                        } else if (code >= 30 && code <= 37) {
-                            color = palette[code - 30];
-                        } else if (code >= 90 && code <= 97) {
-                            color = palette[code - 90];
+                        } else if (code in ANSI_COLORS) {
+                            color = ANSI_COLORS[code as AnsiColorCode];
                         } else if (code === 38 || code === 48 || code === 58) {
                             // skip extended color parameters rather than treating them as SGR commands
                             index +=
@@ -123,7 +143,6 @@ export function LogText({text}: {text: string}) {
                                       : codes.length;
                         }
                     }
-                    start = match.index + match[0].length;
                 }
                 append(line.length);
                 return (

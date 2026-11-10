@@ -5,7 +5,9 @@ const fs = require('node:fs');
 const Module = require('node:module');
 const path = require('node:path');
 const test = require('node:test');
+
 const React = require('react');
+
 const {renderToStaticMarkup} = require('react-dom/server');
 const ts = require('typescript');
 
@@ -21,7 +23,7 @@ const {LogText} = rendererModule.exports;
 const render = (text) => renderToStaticMarkup(React.createElement(LogText, {text}));
 
 test('ANSI basic and bright colors render safely with reset and bold', () => {
-    const html = render('\x1b[31;1merror\x1b[0m plain\n\x1b[92mok\x1b[39m end');
+    const html = render('\x1b[31;1mfailure\x1b[0m plain\n\x1b[92mok\x1b[39m end');
     assert.match(html, /color:var\(--g-color-text-danger\);font-weight:bold/);
     assert.match(html, /<span> plain<\/span>/);
     assert.match(html, /color:var\(--g-color-text-positive\)/);
@@ -76,14 +78,53 @@ test('Pino and NodeKit numeric severity uses known levels and leaves unknown sca
         [40, 'warning'],
         [50, 'danger'],
         [60, 'danger'],
+        [5000, 'secondary'],
         [10000, 'secondary'],
         [20000, 'info'],
         [30000, 'warning'],
         [40000, 'danger'],
+        [50000, 'danger'],
     ]) {
         assert.match(render(JSON.stringify({level})), new RegExp(`--g-color-text-${color}`));
     }
-    for (const level of [0, 70, 2000, 50000]) {
+    for (const level of [0, 70, 2000]) {
         assert.ok(!render(JSON.stringify({level})).includes('color:'));
     }
+});
+
+test('all basic and bright ANSI colors retain their palette mapping', () => {
+    const colors = [
+        'secondary',
+        'danger',
+        'positive',
+        'warning',
+        'info',
+        'utility',
+        'info',
+        'primary',
+    ];
+    for (const base of [30, 90]) {
+        for (const [index, color] of colors.entries()) {
+            assert.equal(
+                render(`\x1b[${base + index}mtext`),
+                `<span style="color:var(--g-color-text-${color})">text</span>`,
+            );
+        }
+    }
+});
+
+test('JSON severity overrides inherited ANSI color while preserving ANSI state across lines', () => {
+    assert.equal(
+        render('\x1b[32;1mfirst\nplain\n{"level":"error"}\nlast'),
+        '<span style="color:var(--g-color-text-positive);font-weight:bold">first</span>\n' +
+            '<span style="color:var(--g-color-text-positive);font-weight:bold">plain</span>\n' +
+            '<span style="color:var(--g-color-text-danger);font-weight:bold">{&quot;level&quot;:&quot;error&quot;}</span>\n' +
+            '<span style="color:var(--g-color-text-positive);font-weight:bold">last</span>',
+    );
+});
+
+test('unsupported colon SGR and other CSI sequences are stripped without changing style', () => {
+    assert.equal(render('\x1b[38:2::1:31:1mtext\x1b[2K end'), '<span>text</span><span> end</span>');
+    assert.equal(render('\x1b[38;2;1;31;1mtext'), '<span>text</span>');
+    assert.match(render('\x1b[2K{"level":"error"}'), /--g-color-text-danger/);
 });
