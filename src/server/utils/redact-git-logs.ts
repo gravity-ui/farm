@@ -49,6 +49,7 @@ export function createGitLogStream() {
         let text = pending + chunk;
         for (const token of getTokenVariants()) text = text.split(token).join('[REDACTED]');
         pending = '';
+        if (final) return redactGitText(text);
         let retained = 0;
         if (!text.endsWith('[REDACTED]')) {
             for (const token of getTokenVariants()) {
@@ -64,10 +65,8 @@ export function createGitLogStream() {
                 }
             }
         }
-        if (retained && !final) pending = text.slice(-retained);
-        return retained
-            ? redactGitText(text.slice(0, -retained)) + (final ? '[REDACTED]' : '')
-            : redactGitText(text);
+        if (retained) pending = text.slice(-retained);
+        return redactGitText(retained ? text.slice(0, -retained) : text);
     };
 }
 

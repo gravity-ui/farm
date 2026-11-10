@@ -3,8 +3,6 @@ import shell from 'shelljs';
 
 import type {Output} from '../../shared/common';
 
-import {createGitLogStream, redactGitLog} from './redact-git-logs';
-
 const LOGS_TIMEOUT = 5000;
 
 export function executeRun(
@@ -13,10 +11,8 @@ export function executeRun(
     handleOutput?: (output: Output) => void,
     getProcessId?: (pid: number) => void,
 ) {
-    handleOutput?.(redactGitLog({command, code: null, stderr: null, stdout: null, duration: null}));
+    handleOutput?.({command, code: null, stderr: null, stdout: null, duration: null});
     const start = Date.now();
-    const redactStdout = createGitLogStream();
-    const redactStderr = createGitLogStream();
 
     if (options.env) {
         options.env = {
@@ -32,15 +28,13 @@ export function executeRun(
     return new Promise<{code: number; stdout: string; stderr: string}>((resolve, reject) => {
         const timerId = setInterval(() => {
             if (stdoutOutput.length > 0 || stderrOutput.length > 0) {
-                handleOutput?.(
-                    redactGitLog({
-                        stdout: redactStdout(stdoutOutput.join('')),
-                        stderr: redactStderr(stderrOutput.join('')),
-                        code: null,
-                        command: null,
-                        duration: null,
-                    }),
-                );
+                handleOutput?.({
+                    stdout: stdoutOutput.join(''),
+                    stderr: stderrOutput.join(''),
+                    code: null,
+                    command: null,
+                    duration: null,
+                });
                 stdoutOutput.length = 0;
                 stderrOutput.length = 0;
             }
@@ -51,20 +45,18 @@ export function executeRun(
 
             clearInterval(timerId);
 
-            handleOutput?.(
-                redactGitLog({
-                    command,
-                    duration,
-                    stdout: redactStdout(stdoutOutput.join(''), true),
-                    stderr: redactStderr(stderrOutput.join(''), true),
-                    code,
-                }),
-            );
+            handleOutput?.({
+                command,
+                duration,
+                stdout: stdoutOutput.join(''),
+                stderr: stderrOutput.join(''),
+                code,
+            });
 
             if (code === 0) {
                 resolve({code, stdout, stderr});
             } else {
-                reject(redactGitLog({command, code, stdout, stderr}));
+                reject({command, code, stdout, stderr});
             }
         });
 

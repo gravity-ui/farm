@@ -44,6 +44,10 @@ export function getCheckoutRef({
 export interface Vcs {
     startup(): Promise<void>;
 
+    redactOutput?<T extends object>(output: T): T;
+    redactLogs?<T extends Output>(logs: T[]): T[];
+    createLogRedactor?(): (logs: Output[], final?: boolean) => Output[];
+
     getCheckoutRef?(params: Pick<VcsGetK8sCheckoutCommands, 'branch' | 'commit'>): string;
     isValidRef?(ref: string): boolean;
 

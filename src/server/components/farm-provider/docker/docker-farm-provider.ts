@@ -21,6 +21,7 @@ import {type HealthcheckInstance, HealthcheckManager} from '../../../utils/healt
 import {ping} from '../../../utils/ping';
 import {normalizeInstanceProviderStatus} from '../../../utils/status';
 import {getVcs} from '../../../utils/vcs';
+import {createVcsBuildObserver, redactVcsError} from '../../../utils/vcs/logs';
 import type {FarmInternalApi, LogParams} from '../base-provider';
 import {BaseFarmProvider} from '../base-provider';
 
@@ -333,6 +334,8 @@ export class DockerFarmProvider extends BaseFarmProvider {
         } = instance;
 
         const vcs = getVcs(projectVcs);
+        const buildLogs = createVcsBuildObserver(vcs, observer);
+        observer = buildLogs.observer;
 
         const instancePath = this.getInstanceFullPath(hash, project);
 
@@ -545,13 +548,16 @@ export class DockerFarmProvider extends BaseFarmProvider {
                 output: [
                     {stdout: 'Done!', code: null, command: null, stderr: null, duration: null},
                 ],
-                config: {status: 'generated'},
             });
+            buildLogs.flush();
+            observer.next({config: {status: 'generated'}});
         } catch (error) {
+            buildLogs.flush();
             observer.next({config: {status: 'errored'}});
 
-            throw error;
+            throw redactVcsError(vcs, error);
         } finally {
+            buildLogs.flush();
             // removing AbortController for build process
             this.buildingInstances.delete(hash);
         }

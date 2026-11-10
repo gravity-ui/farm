@@ -23,6 +23,7 @@ import {
     getInstanceConfig,
 } from '../../../utils/farmJsonConfig';
 import {getVcs} from '../../../utils/vcs';
+import {createVcsBuildObserver, redactVcsError} from '../../../utils/vcs/logs';
 import {waitFor} from '../../../utils/wait-for';
 import {wrapAsCommand} from '../../../utils/wrap-as-command';
 import type {FarmInternalApi, LogParams} from '../base-provider';
@@ -206,6 +207,9 @@ export class K8sFarmProvider extends BaseFarmProvider {
         observer: SubscriptionObserver<InstanceObservableEmitValue>,
     ): Promise<void> {
         let builderInfo: K8sContainerInfo | undefined;
+        const vcsProvider = getVcs(generateData.vcs);
+        const buildLogs = createVcsBuildObserver(vcsProvider, observer);
+        observer = buildLogs.observer;
 
         try {
             const {hash, vcs, project, branch, commit, instanceConfigName} = generateData;
@@ -334,6 +338,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 );
             });
 
+            buildLogs.flush();
             observer.next({config: {status: 'generated'}});
         } catch (error) {
             let normalizedError = error;
@@ -355,8 +360,11 @@ export class K8sFarmProvider extends BaseFarmProvider {
                 }
             }
 
+            buildLogs.flush();
             observer.next({config: {status: 'errored'}});
-            throw normalizedError;
+            throw redactVcsError(vcsProvider, normalizedError);
+        } finally {
+            buildLogs.flush();
         }
     }
 

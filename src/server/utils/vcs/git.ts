@@ -9,7 +9,7 @@ import {executeRun} from '../async';
 import {buildPath, getAllProjectNames, getProjectFarmConfig} from '../common';
 import {farmAxios} from '../envAxios';
 import type {FarmProjectConfig} from '../farmJsonConfig';
-import {redactGitLog} from '../redact-git-logs';
+import {createGitLogStream, redactGitLog, redactGitLogRows} from '../redact-git-logs';
 
 import {quoteGitArgument as quote, withGitCredentials} from './git-credentials';
 import type {
@@ -25,6 +25,25 @@ const defaultHostname = 'github.com';
 const defaultWebhookEventNameHeader = 'x-github-event';
 
 export class GitVcs implements Vcs {
+    redactOutput = redactGitLog;
+    redactLogs = redactGitLogRows;
+
+    createLogRedactor() {
+        const stdout = createGitLogStream();
+        const stderr = createGitLogStream();
+        return (logs: Output[], final = false): Output[] => {
+            const rows =
+                logs.length || !final
+                    ? logs
+                    : [{stdout: '', stderr: '', command: null, duration: null, code: null}];
+            return rows.map((row, index) => ({
+                ...this.redactOutput(row),
+                stdout: stdout(row.stdout || '', final && index === rows.length - 1),
+                stderr: stderr(row.stderr || '', final && index === rows.length - 1),
+            }));
+        };
+    }
+
     async startup(): Promise<void> {
         return Promise.resolve();
     }
@@ -70,11 +89,15 @@ export class GitVcs implements Vcs {
                 git checkout ${quote(instanceDir)}`;
         }
         const output: Output[] = [];
-        await withGitCredentials(hostname, getGitToken(vcsConfig), async (env) => {
-            await executeRun(command, {env}, (log) => output.push(redactGitLog(log)));
-        });
+        try {
+            await withGitCredentials(hostname, getGitToken(vcsConfig), async (env) => {
+                await executeRun(command, {env}, (log) => output.push(log));
+            });
+        } catch (error) {
+            throw this.redactOutput(error instanceof Object ? error : new Error(String(error)));
+        }
 
-        return output;
+        return this.redactLogs(output);
     }
 
     getK8sCheckoutCommands({project, branch, commit}: VcsGetK8sCheckoutCommands): string[] {

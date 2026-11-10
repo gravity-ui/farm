@@ -3,7 +3,6 @@ import _ from 'lodash';
 import type {Instance, InstanceCommonStatus, Output} from '../../../shared/common';
 import type {GenerateInstanceData, InstanceBuildLogsRow, InstanceRow} from '../../models/common';
 import {getCurrentTime} from '../common';
-import {redactGitLogRows} from '../redact-git-logs';
 
 import {knexInstance} from './knex';
 
@@ -33,7 +32,7 @@ export async function insertInstance(
 }
 
 export async function insertInstanceLogs(hash: string, logs: Output[]): Promise<void> {
-    const logEntries = redactGitLogRows(logs).reduce<Omit<InstanceBuildLogsRow, 'id'>[]>(
+    const logEntries = logs.reduce<Omit<InstanceBuildLogsRow, 'id'>[]>(
         (acc, {stdout = '', stderr = '', command = '', duration = 0, code = 0}) => {
             acc.push({
                 hash,
@@ -122,7 +121,7 @@ export async function listInstanceBuildLogs(hash: string): Promise<InstanceBuild
         .select()
         .where({hash: hash})
         .orderBy('created', 'asc');
-    return redactGitLogRows(rows);
+    return rows;
 }
 
 export async function clearInstanceData(hash: string): Promise<void> {

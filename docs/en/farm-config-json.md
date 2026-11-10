@@ -17,7 +17,7 @@
 - *Required*
 > Repository path. Example: `data-ui/farm`.
 
-Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
+Git repository format: `https://github.com/<repositoryPath>.git`.
 
 ### `instanceStopTimeout`
 - *Number*
@@ -87,7 +87,9 @@ Git repository format: `https://<token>@github.com/<repositoryPath>.git`.
 > }
 > ```
 
-> Will be used for git clone https://`{token}`@`{hostname}`/`{repositoryPath}`.git
+> Local Git checkout clones `https://{hostname}/{repositoryPath}.git` and supplies the token through a temporary `GIT_ASKPASS` helper. The token is not embedded in the clone URL or command arguments.
+>
+> Kubernetes checkout still embeds credentials in the clone URL passed to its init container. Moving that path to a Kubernetes Secret and a credential helper is a separate follow-up; the local askpass change does not cover it.
 
 > Webhook with `X-GitHub-Event` header will be associate with Git provider.
 

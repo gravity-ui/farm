@@ -3,6 +3,7 @@ import type {InstanceDescription, InstanceInfo} from '../models/common';
 
 import {generateInstanceHash, generateInstanceHref, getEncodedBranch} from './common';
 import {insertInstanceLogs} from './db';
+import {getVcs} from './vcs';
 
 // Общие функции из которых осуществляются взаимодействие с базой.
 // Было унесено из common.ts т.к. вызывало ошибку при использовании общего файла из тредов.
@@ -41,7 +42,8 @@ export function getInstanceDescription(info: InstanceInfo): InstanceDescription 
 
         project,
         insertInstanceLogs: async (logs: Output[]) => {
-            await insertInstanceLogs(hash, logs);
+            const provider = getVcs(vcs);
+            await insertInstanceLogs(hash, provider.redactLogs?.(logs) ?? logs);
         },
     };
 }
