@@ -86,33 +86,38 @@ export async function handleUnifiedPullRequest(
                 ? filterEmptyObjectEntries(commonData.runEnvVariables)
                 : undefined;
 
-            await runAllSync(configFile.preview, async (config) => {
-                const sameInstances = filterInstancesByLabels(
-                    projectInstances,
-                    finalLabels,
-                    uniqByLabels,
+            for (const config of configFile.preview) {
+                instanceHashMap.set(
+                    config.name,
+                    generateInstanceHash({
+                        project: commonData.project,
+                        vcs,
+                        branch: commonData.branch,
+                        instanceConfigName: config.name,
+                        additionalEnvVariables: finalEnvVariables,
+                        additionalRunEnvVariables: finalRunEnvVariables,
+                    }),
                 );
+            }
 
-                if (sameInstances && sameInstances.length > 0) {
-                    ctx.log('Found same instances. Deleting them.', {
-                        sameInstances: sameInstances.map((instance) => instance.hash),
-                    });
+            // Instances with a hash from this event are regenerated in place, not deleted
+            const newHashes = new Set(instanceHashMap.values());
+            const sameInstances = (
+                filterInstancesByLabels(projectInstances, finalLabels, uniqByLabels) ?? []
+            ).filter((instance) => !newHashes.has(instance.hash));
 
-                    await runAll(sameInstances, async (instance) => {
-                        await deleteInstance({data: {hash: instance.hash}, ctx});
-                    });
-                }
-
-                const hash = generateInstanceHash({
-                    project: commonData.project,
-                    vcs,
-                    branch: commonData.branch,
-                    instanceConfigName: config.name,
-                    additionalEnvVariables: finalEnvVariables,
-                    additionalRunEnvVariables: finalRunEnvVariables,
+            if (sameInstances.length > 0) {
+                ctx.log('Found same instances. Deleting them.', {
+                    sameInstances: sameInstances.map((instance) => instance.hash),
                 });
 
-                instanceHashMap.set(config.name, hash);
+                await runAll(sameInstances, async (instance) => {
+                    await deleteInstance({data: {hash: instance.hash}, ctx});
+                });
+            }
+
+            await runAllSync(configFile.preview, async (config) => {
+                const hash = instanceHashMap.get(config.name);
 
                 await getCurrentInstanceAndGenerate({
                     hash,

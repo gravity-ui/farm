@@ -19,18 +19,23 @@ const {coreRegistry} = require('../src/server/components/core-plugin-registry/in
 const {
     handleUnifiedPullRequest,
 } = require('../src/server/controllers/webhook/unified-pull-request.ts');
+const {generateInstanceHash} = require('../src/server/utils/common.ts');
 const {insertInstance} = require('../src/server/utils/db/index.ts');
 const {knexInstance} = require('../src/server/utils/db/knex.ts');
 
 const ctx = {log: () => undefined, logError: () => undefined, stats: () => undefined};
+let previewConfigs;
 
-const insert = (hash, {project = 'console', branch = 'trunk', labels} = {}) =>
+const insert = (
+    hash,
+    {project = 'console', branch = 'trunk', instanceConfigName = '', labels} = {},
+) =>
     insertInstance({
         hash,
         project,
         branch,
         vcs: 'custom',
-        instanceConfigName: '',
+        instanceConfigName,
         labels,
         status: 'generated',
     });
@@ -50,7 +55,7 @@ const closed = (data) =>
 before(async () => {
     const vcs = {
         getCheckoutRef: ({branch, commit}) => commit || branch,
-        getProjectConfig: async () => ({'preview-generator': {instances: [{name: ''}]}}),
+        getProjectConfig: async () => ({'preview-generator': {instances: previewConfigs}}),
     };
     coreRegistry.vcs.plugIn('custom', {constructor: () => vcs});
     coreRegistry.vcs.setInstance('custom', vcs);
@@ -60,6 +65,7 @@ before(async () => {
 });
 
 beforeEach(async () => {
+    previewConfigs = [{name: ''}];
     await knexInstance('instances').del();
 });
 
@@ -127,4 +133,49 @@ test('opened pull request replaces same-label instances only in its project', as
     const statuses = await getStatuses();
     assert.equal(statuses['foreign-same-labels'], 'generated');
     assert.equal(statuses['previous-iteration'], 'deleting');
+});
+
+test('repeated opened pull request keeps every regenerated configuration', async () => {
+    previewConfigs = [{name: 'cfg-a'}, {name: 'cfg-b'}];
+    const labels = {branch: 'users/someone/pr'};
+    const hashOf = (instanceConfigName) =>
+        generateInstanceHash({
+            project: 'console',
+            vcs: 'custom',
+            branch: 'users/someone/pr',
+            instanceConfigName,
+            additionalEnvVariables: undefined,
+            additionalRunEnvVariables: undefined,
+        });
+    await insert(hashOf('cfg-a'), {
+        branch: 'users/someone/pr',
+        instanceConfigName: 'cfg-a',
+        labels,
+    });
+    await insert(hashOf('cfg-b'), {
+        branch: 'users/someone/pr',
+        instanceConfigName: 'cfg-b',
+        labels,
+    });
+    await insert('previous-branch', {branch: 'users/someone/old', labels});
+
+    await handleUnifiedPullRequest(
+        {
+            action: 'opened',
+            project: 'console',
+            branch: 'users/someone/pr',
+            title: '',
+            description: '',
+            labels,
+            uniqByLabels: ['branch'],
+        },
+        'custom',
+        ctx,
+    );
+
+    assert.deepEqual(await getStatuses(), {
+        [hashOf('cfg-a')]: 'queued',
+        [hashOf('cfg-b')]: 'queued',
+        'previous-branch': 'deleting',
+    });
 });
