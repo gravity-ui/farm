@@ -79,10 +79,13 @@ export async function listInstances(): Promise<Instance[]> {
     return result.map(mapInstanceRow);
 }
 
-export async function getInstancesByBranch(branch: string): Promise<Instance[]> {
+export async function getProjectInstancesByBranch(
+    project: string,
+    branch: string,
+): Promise<Instance[]> {
     const result = await knexInstance('instances')
         .select()
-        .where({branch})
+        .where({project, branch})
         .orderBy('created', 'asc');
 
     return result.map(mapInstanceRow);

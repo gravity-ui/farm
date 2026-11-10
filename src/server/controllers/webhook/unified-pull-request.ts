@@ -13,11 +13,25 @@ import {
     wrapInternalError,
 } from '../../utils/common';
 import {getInstanceDescription} from '../../utils/common-db';
-import {getInstance, getInstancesByBranch, listInstances} from '../../utils/db';
+import {getInstance, getProjectInstancesByBranch, listInstances} from '../../utils/db';
 import {fetchProjectConfig} from '../../utils/farmJsonConfig';
 import type {CommonPullRequestData} from '../../utils/vcs/vcs';
 
 import {getCurrentInstanceAndGenerate} from './common';
+
+function filterInstancesByLabels(
+    instances: Instance[],
+    labels: Record<string, string> | undefined,
+    uniqByLabels: string[] | undefined,
+): Instance[] | undefined {
+    if (!labels || isEmpty(labels) || !uniqByLabels || uniqByLabels.length === 0) {
+        return undefined;
+    }
+
+    return instances.filter((instance) =>
+        uniqByLabels.every((label) => instance.labels?.[label] === labels[label]),
+    );
+}
 
 export async function handleUnifiedPullRequest(
     commonData: CommonPullRequestData,
@@ -52,6 +66,9 @@ export async function handleUnifiedPullRequest(
 
             const instanceHashMap = new Map<string, string>();
             const instances = await listInstances();
+            const projectInstances = instances.filter(
+                (instance) => instance.project === commonData.project,
+            );
 
             const instanceDescriptions = await runAll(configFile.preview, (instanceConfig) =>
                 getInstanceDescription({
@@ -73,20 +90,11 @@ export async function handleUnifiedPullRequest(
                 : undefined;
 
             await runAllSync(configFile.preview, async (config) => {
-                let sameInstances: Instance[] | undefined;
-
-                if (
-                    finalLabels &&
-                    !isEmpty(finalLabels) &&
-                    uniqByLabels &&
-                    uniqByLabels.length > 0
-                ) {
-                    sameInstances = instances.filter((instance) => {
-                        return uniqByLabels.every(
-                            (label) => instance.labels?.[label] === finalLabels[label],
-                        );
-                    });
-                }
+                const sameInstances = filterInstancesByLabels(
+                    projectInstances,
+                    finalLabels,
+                    uniqByLabels,
+                );
 
                 if (sameInstances && sameInstances.length > 0) {
                     ctx.log('Found same instances. Deleting them.', {
@@ -165,7 +173,22 @@ export async function handleUnifiedPullRequest(
                 }
             }
         } else if (commonData.action === 'closed') {
-            const instances = await getInstancesByBranch(commonData.branch);
+            const branchInstances = await getProjectInstancesByBranch(
+                commonData.project,
+                commonData.branch,
+            );
+            const finalLabels = labels ? filterEmptyObjectEntries(labels) : undefined;
+            const instances =
+                filterInstancesByLabels(branchInstances, finalLabels, uniqByLabels) ??
+                branchInstances;
+
+            ctx.log('Deleting instances of closed pull request.', {
+                project: commonData.project,
+                branch: commonData.branch,
+                labels: finalLabels,
+                uniqByLabels,
+                instances: instances.map((instance) => instance.hash),
+            });
 
             const webhookActions = coreRegistry.webhookActions.getPlugins();
             for (const [name, action] of Object.entries(webhookActions)) {
