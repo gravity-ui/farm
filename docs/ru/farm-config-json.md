@@ -17,7 +17,7 @@
 - *Required*
 > Путь к репозиторию. Пример: `data-ui/farm`.
 
-Формат Git репозитория: `https://<token>@github.com/<repositoryPath>.git`.
+Формат Git репозитория: `https://github.com/<repositoryPath>.git`.
 
 ### `instanceStopTimeout`
 - *Number*
@@ -87,7 +87,9 @@
 > }
 > ```
 
-> Будет использоваться для git clone https://`{token}`@`{hostname}`/`{repositoryPath}`.git
+> Локальный Git checkout клонирует `https://{hostname}/{repositoryPath}.git` и передает токен через временный скрипт `GIT_ASKPASS`. Токен не включается в URL клонирования или аргументы команды.
+>
+> Kubernetes checkout пока включает учетные данные в URL клонирования, передаваемый init-контейнеру. Переход этого пути на Kubernetes Secret и credential helper выполняется отдельно, локальная доработка askpass его не покрывает.
 
 > Webhook с заголовком `X-GitHub-Event` будет связан с Git провайдером.
 

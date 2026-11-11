@@ -10,6 +10,8 @@ import {formatError} from '../common';
 import {fetchProjectConfig} from '../farmJsonConfig';
 import type {Stats} from '../stats';
 import {sendStats} from '../stats';
+import {getVcs} from '../vcs';
+import {createVcsLogRedactor, redactVcsError} from '../vcs/logs';
 
 const prepareSendStats = (data: Instance, ctx: AppContext) => {
     const start = Date.now();
@@ -74,6 +76,8 @@ const buildInstance = ({
     sendBuildStats: (step: string) => void;
     instance: GenerateInstanceData;
 }) => {
+    const vcs = getVcs(instance.vcs);
+    const redactLogs = createVcsLogRedactor(vcs);
     return new Promise<void>((resolve) => {
         const observable = new Observable<InstanceObservableEmitValue>((observer) => {
             validateInstanceEnv(instance)
@@ -93,41 +97,69 @@ const buildInstance = ({
                 });
         });
 
+        let pending = Promise.resolve();
+        const enqueue = (task: () => Promise<void>) => {
+            pending = pending.then(task).catch(console.log);
+        };
+
         observable.subscribe({
-            next: async ({output, config}) => {
-                if (output && output.length > 0) {
-                    await db.insertInstanceLogs(instance.hash, output);
+            next: ({output, config}) =>
+                enqueue(async () => {
+                    const terminal = config?.status === 'generated' || config?.status === 'errored';
+                    const safeOutput = redactLogs(output ?? [], terminal);
+                    if (safeOutput.length > 0) {
+                        await db.insertInstanceLogs(instance.hash, safeOutput);
 
-                    // TODO(golbahsg): Why only one?
-                    const [log] = output;
-                    if (log.duration && log.command) {
-                        sendBuildStats(log.command);
+                        // TODO(golbahsg): Why only one?
+                        const [log] = safeOutput;
+                        if (log.duration && log.command) {
+                            sendBuildStats(log.command);
+                        }
                     }
-                }
 
-                if (config?.status) {
-                    await db.updateInstanceStatus(instance.hash, config.status);
-                }
-            },
-            error: async (e) => {
-                await db
-                    .insertInstanceLogs(instance.hash, [
-                        {
-                            command: e.command || 'Build failed',
-                            stdout: e.stdout || '',
-                            code: -1,
-                            duration: 0,
-                            stderr: formatError(e),
-                        },
-                    ])
-                    .catch(console.log);
+                    if (config?.status) {
+                        await db.updateInstanceStatus(instance.hash, config.status);
+                    }
+                }),
+            error: (error) =>
+                enqueue(async () => {
+                    const e = redactVcsError(vcs, error) as any;
+                    await db
+                        .insertInstanceLogs(
+                            instance.hash,
+                            redactLogs(
+                                [
+                                    {
+                                        command: e.command || 'Build failed',
+                                        stdout: e.stdout || '',
+                                        code: -1,
+                                        duration: 0,
+                                        stderr: formatError(e),
+                                    },
+                                ],
+                                true,
+                            ),
+                        )
+                        .catch(console.log);
 
-                await db.updateInstanceStatus(instance.hash, 'errored');
-                sendBuildStats('BUILD_ERRORED');
-            },
-            complete: () => {
-                resolve();
-            },
+                    try {
+                        await db.updateInstanceStatus(instance.hash, 'errored');
+                        sendBuildStats('BUILD_ERRORED');
+                    } finally {
+                        resolve();
+                    }
+                }),
+            complete: () =>
+                enqueue(async () => {
+                    const output = redactLogs([], true);
+                    try {
+                        if (output.some((row) => row.stdout || row.stderr)) {
+                            await db.insertInstanceLogs(instance.hash, output);
+                        }
+                    } finally {
+                        resolve();
+                    }
+                }),
         });
     });
 };
@@ -147,17 +179,26 @@ export const generateInstance = async (instance: Instance) => {
             sendBuildStats,
             instance,
         });
-    } catch (e) {
-        db.insertInstanceLogs(instance.hash, [
-            {
-                command: 'Build failed',
-                // @ts-expect-error e is any
-                stdout: e.stdout || '',
-                code: -1,
-                duration: 0,
-                stderr: formatError(e),
-            },
-        ]).catch(console.log);
+    } catch (error) {
+        const vcs = getVcs(instance.vcs);
+        const e = redactVcsError(vcs, error);
+        const redactLogs = createVcsLogRedactor(vcs);
+        db.insertInstanceLogs(
+            instance.hash,
+            redactLogs(
+                [
+                    {
+                        command: 'Build failed',
+                        // @ts-expect-error e is any
+                        stdout: e.stdout || '',
+                        code: -1,
+                        duration: 0,
+                        stderr: formatError(e),
+                    },
+                ],
+                true,
+            ),
+        ).catch(console.log);
 
         db.updateInstanceStatus(instance.hash, 'errored').catch(console.log);
 

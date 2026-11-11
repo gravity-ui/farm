@@ -7,6 +7,8 @@ const {execFileSync} = require('node:child_process');
 const {test} = require('node:test');
 const ts = require('typescript');
 
+require('ts-node/register');
+
 function loadGit(dependencies) {
     const source = fs.readFileSync(path.join(__dirname, '../src/server/utils/vcs/git.ts'), 'utf8');
     const module = {exports: {}};
@@ -94,6 +96,12 @@ test('PM2 and Kubernetes checkout distinguish tags from branches with reserved p
             },
             './vcs': {getCheckoutRef: ({branch, commit}) => commit || branch},
             './github-recent-refs': {},
+            './git-credentials': require('../src/server/utils/vcs/git-credentials.ts'),
+            '../redact-git-logs': {
+                redactGitLog: (value) => value,
+                redactGitLogRows: (rows) => rows,
+                createGitLogStream: () => (value) => value,
+            },
         });
         const vcs = new GitVcs();
         const refs = [

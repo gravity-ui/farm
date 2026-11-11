@@ -4,6 +4,7 @@ import type {ListLogsRequest, ListLogsResponse} from '../../../shared/api/listLo
 import type {ApiAction, Instance, Output} from '../../../shared/common';
 import {wrapInternalError} from '../../utils/common';
 import * as db from '../../utils/db';
+import {getVcs} from '../../utils/vcs';
 
 const instanceWasNotFoundResponse = {
     ok: false,
@@ -29,7 +30,9 @@ const listLogs: ApiAction<ListLogsRequest, ListLogsResponse> = async ({data, ctx
             return instanceWasNotFoundResponse;
         }
 
-        logs = await db.listInstanceBuildLogs(data.hash);
+        const rows = await db.listInstanceBuildLogs(data.hash);
+        const vcs = getVcs(instance.vcs);
+        logs = vcs.redactLogs?.(rows) ?? rows;
         const finished =
             instance.status === 'generated' ||
             instance.status === 'deleting' ||

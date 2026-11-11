@@ -137,10 +137,11 @@ export async function countGeneratingInstances(): Promise<number> {
 }
 
 export async function listInstanceBuildLogs(hash: string): Promise<InstanceBuildLogsRow[]> {
-    return knexInstance('instance_build_logs')
+    const rows = await knexInstance('instance_build_logs')
         .select()
         .where({hash: hash})
         .orderBy('created', 'asc');
+    return rows;
 }
 
 export async function clearInstanceData(hash: string): Promise<void> {

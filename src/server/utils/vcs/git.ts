@@ -9,7 +9,9 @@ import {TEMP_PATH, WORKDIR_PATH} from '../../constants';
 import {executeRun} from '../async';
 import {buildPath, getAllProjectNames, getProjectFarmConfig} from '../common';
 import type {FarmProjectConfig} from '../farmJsonConfig';
+import {createGitLogStream, redactGitLog, redactGitLogRows} from '../redact-git-logs';
 
+import {quoteGitArgument as quote, withGitCredentials} from './git-credentials';
 import {listGithubRecentRefs} from './github-recent-refs';
 import type {
     CommonPullRequestData,
@@ -24,6 +26,25 @@ const defaultHostname = 'github.com';
 const defaultWebhookEventNameHeader = 'x-github-event';
 
 export class GitVcs implements Vcs {
+    redactOutput = redactGitLog;
+    redactLogs = redactGitLogRows;
+
+    createLogRedactor() {
+        const stdout = createGitLogStream();
+        const stderr = createGitLogStream();
+        return (logs: Output[], final = false): Output[] => {
+            const rows =
+                logs.length || !final
+                    ? logs
+                    : [{stdout: '', stderr: '', command: null, duration: null, code: null}];
+            return rows.map((row, index) => ({
+                ...this.redactOutput(row),
+                stdout: stdout(row.stdout || '', final && index === rows.length - 1),
+                stderr: stderr(row.stderr || '', final && index === rows.length - 1),
+            }));
+        };
+    }
+
     async startup(): Promise<void> {
         return Promise.resolve();
     }
@@ -43,48 +64,48 @@ export class GitVcs implements Vcs {
     async checkout({project, branch, commit, instanceDir}: VcsCheckoutProps) {
         const {repositoryPath, vcsCredentials} = getProjectFarmConfig(project);
         const vcsConfig = vcsCredentials?.git ?? {};
-        const projectRepoUrl = getPrivateAuthHostname(vcsConfig);
+        const hostname = vcsConfig.hostname || defaultHostname;
+        const authority = hostname.split(':');
+        if (
+            authority.length > 2 ||
+            !/^[A-Za-z0-9.-]+$/.test(authority[0]) ||
+            (authority.length === 2 && !/^[0-9]+$/.test(authority[1]))
+        ) {
+            throw new Error('Unsupported git hostname');
+        }
+        const projectRepoUrl = `https://${hostname}/${repositoryPath}.git`;
         const checkoutRef = this.getCheckoutRef({branch, commit});
-
         const targetDir = `${WORKDIR_PATH}/${instanceDir}`;
         const explicitBranch = branch.startsWith('refs/heads/');
         const branchName = explicitBranch ? branch.slice('refs/heads/'.length) : branch;
-        const repositoryUrl = `${projectRepoUrl}/${repositoryPath}.git`;
-        let command = `git clone --depth 1 -b ${quote(branchName)} -- ${quote(repositoryUrl)} ${quote(targetDir)}`;
-
+        const git = 'git -c credential.helper= -c credential.username=x-access-token';
+        let command = `${git} clone --depth 1 -b ${quote(branchName)} -- ${quote(projectRepoUrl)} ${quote(targetDir)}`;
         if (commit) {
-            command = `
-                git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(targetDir)} &&
+            command = `${git} clone --depth 1 -- ${quote(projectRepoUrl)} ${quote(targetDir)} &&
                 cd ${quote(targetDir)} &&
-                git fetch --depth 1 origin ${quote(checkoutRef)} &&
-                git checkout --detach ${quote(checkoutRef)}
-            `;
+                ${git} fetch --depth 1 origin ${quote(checkoutRef)} &&
+                git checkout --detach ${quote(checkoutRef)}`;
         } else if (!explicitBranch && branch.startsWith('refs/tags/')) {
-            command = `
-                git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(targetDir)} &&
+            command = `${git} clone --depth 1 -- ${quote(projectRepoUrl)} ${quote(targetDir)} &&
                 cd ${quote(targetDir)} &&
-                git fetch --depth 1 origin ${quote(branch)} &&
-                git checkout --detach FETCH_HEAD
-            `;
+                ${git} fetch --depth 1 origin ${quote(branch)} &&
+                git checkout --detach FETCH_HEAD`;
         } else if (!explicitBranch && branch.startsWith('pull/')) {
-            command = `
-                git clone --depth 1 -- ${quote(repositoryUrl)} ${quote(targetDir)} &&
+            command = `${git} clone --depth 1 -- ${quote(projectRepoUrl)} ${quote(targetDir)} &&
                 cd ${quote(targetDir)} &&
-                git fetch origin ${quote(`${branch}:${instanceDir}`)} &&
-                git checkout ${quote(instanceDir)}
-            `;
+                ${git} fetch origin ${quote(`${branch}:${instanceDir}`)} &&
+                git checkout ${quote(instanceDir)}`;
+        }
+        const output: Output[] = [];
+        try {
+            await withGitCredentials(hostname, getGitToken(vcsConfig), async (env) => {
+                await executeRun(command, {env}, (log) => output.push(log));
+            });
+        } catch (error) {
+            throw this.redactOutput(error instanceof Object ? error : new Error(String(error)));
         }
 
-        const output: Output[] = [];
-
-        await executeRun(command, undefined, (o) => {
-            if (o.command) {
-                o.command = filterToken(o.command, vcsConfig);
-            }
-            output.push(o);
-        });
-
-        return output;
+        return this.redactLogs(output);
     }
 
     getK8sCheckoutCommands({project, branch, commit}: VcsGetK8sCheckoutCommands): string[] {
@@ -275,11 +296,6 @@ export class GitVcs implements Vcs {
     }
 }
 
-function filterToken(output: string, config: VcsCredentialsConfig) {
-    const tokenValue = getGitToken(config);
-    return tokenValue ? output.replace(tokenValue, 'GIT_REPOSITORY_TOKEN') : output;
-}
-
 /**
  * Works only with git clone command
  */
@@ -306,8 +322,4 @@ function getGitToken(config: VcsCredentialsConfig): string | undefined {
 
 function getRandom() {
     return String(Math.floor(Math.random() * 9000 + 1000));
-}
-
-function quote(value: string) {
-    return "'" + value.replace(/'/g, "'\\''") + "'";
 }
