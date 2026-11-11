@@ -179,3 +179,35 @@ test('repeated opened pull request keeps every regenerated configuration', async
         'previous-branch': 'deleting',
     });
 });
+
+test('closed pull request with incomplete labels deletes nothing', async () => {
+    await insert('source-only', {labels: {source: 'configs'}});
+    await insert('configs-pr', {
+        labels: {source: 'configs', branch: 'users/someone/pr', instance: 'ru-preprod'},
+    });
+
+    await closed({
+        project: 'console',
+        branch: 'trunk',
+        labels: {source: 'configs', branch: ''},
+        uniqByLabels: ['source', 'branch', 'instance'],
+    });
+
+    assert.deepEqual(await getStatuses(), {
+        'configs-pr': 'generated',
+        'source-only': 'generated',
+    });
+});
+
+test('closed pull request with uniqByLabels and empty labels deletes nothing', async () => {
+    await insert('mine', {labels: {owner: 'data-transfer'}});
+
+    await closed({
+        project: 'console',
+        branch: 'trunk',
+        labels: {branch: ''},
+        uniqByLabels: ['branch'],
+    });
+
+    assert.deepEqual(await getStatuses(), {mine: 'generated'});
+});

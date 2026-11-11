@@ -1,6 +1,5 @@
 import type {AppContext} from '@gravity-ui/nodekit';
 import {AppError} from '@gravity-ui/nodekit';
-import {isEmpty} from 'lodash';
 
 import type {Instance} from '../../../shared/common';
 import deleteInstance from '../../components/api-actions/deleteInstance';
@@ -24,12 +23,18 @@ function filterInstancesByLabels(
     labels: Record<string, string> | undefined,
     uniqByLabels: string[] | undefined,
 ): Instance[] | undefined {
-    if (!labels || isEmpty(labels) || !uniqByLabels || uniqByLabels.length === 0) {
+    if (!uniqByLabels || uniqByLabels.length === 0) {
         return undefined;
     }
 
+    const actualLabels = labels ?? {};
+
+    if (uniqByLabels.some((label) => actualLabels[label] === undefined)) {
+        return [];
+    }
+
     return instances.filter((instance) =>
-        uniqByLabels.every((label) => instance.labels?.[label] === labels[label]),
+        uniqByLabels.every((label) => instance.labels?.[label] === actualLabels[label]),
     );
 }
 
