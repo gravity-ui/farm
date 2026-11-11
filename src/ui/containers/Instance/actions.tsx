@@ -140,6 +140,7 @@ export const useInstanceActions = () => {
         const request = {
             ...omitNullable(data),
             ...prepareEnvVariables(data.envVariables, data.runEnvVariables),
+            secretSourceHash: data.hash,
         };
 
         try {

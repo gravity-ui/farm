@@ -1,10 +1,13 @@
 import type {Request, Response} from '@gravity-ui/expresskit';
 
 import apiActions from '../components/api-actions';
+import {getGlobalFarmConfig} from '../utils/common';
+import {maskSecrets, registerSecrets} from '../utils/secret-env';
 import type {Stats} from '../utils/stats';
 import {sendStats} from '../utils/stats';
 
-export default async (req: Request, res: Response) => {
+const api = async (req: Request, res: Response) => {
+    registerSecrets(getGlobalFarmConfig());
     const {action} = req.params;
 
     const startTime = Date.now();
@@ -42,10 +45,10 @@ export default async (req: Request, res: Response) => {
     });
 
     if (ok) {
-        res.status(200).send(data);
+        res.status(200).send(maskSecrets(data));
     } else {
         stats.responseStatus = status;
-        res.status(status).send({data, message});
+        res.status(status).send(maskSecrets({data, message}));
     }
 
     stats.requestTime = Date.now() - startTime;
@@ -55,4 +58,12 @@ export default async (req: Request, res: Response) => {
     }
 
     sendStats(stats, req.ctx);
+};
+
+export default async (req: Request, res: Response) => {
+    try {
+        await api(req, res);
+    } catch {
+        res.status(500).send({message: 'API request failed'});
+    }
 };

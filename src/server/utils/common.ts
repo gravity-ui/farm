@@ -10,6 +10,10 @@ import {envConfig} from '../configs/env';
 import type {InstanceInfo} from '../models/common';
 import type {FarmConfig} from '../models/farmConfig';
 
+import {maskSecrets, redactSecretText, registerSecrets} from './secret-env';
+
+registerSecrets(envConfig);
+
 export function getProviderConfig() {
     // expected directly using
     return envConfig.farmProvider;
@@ -184,12 +188,13 @@ export const formatError = (e: any) => {
         stderr += `stack: ${e.stack}\n`;
     }
 
-    return stderr;
+    return redactSecretText(stderr);
 };
 
 export function wrapInternalError(error: any) {
-    return AppError.wrap(error, {
-        details: error,
+    const safe = maskSecrets(error);
+    return AppError.wrap(new Error(safe?.message || 'Internal error'), {
+        details: safe,
     });
 }
 

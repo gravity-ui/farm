@@ -17,11 +17,13 @@ import {
     getProjectFarmConfig,
     wrapInternalError,
 } from '../../../utils/common';
+import {updateInstanceSecretSnapshot} from '../../../utils/db';
 import {
     type FarmJsonConfig,
     fetchProjectConfig,
     getInstanceConfig,
 } from '../../../utils/farmJsonConfig';
+import {mergeSecretEnv} from '../../../utils/secret-env';
 import {getVcs} from '../../../utils/vcs';
 import {waitFor} from '../../../utils/wait-for';
 import {wrapAsCommand} from '../../../utils/wrap-as-command';
@@ -221,6 +223,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             if (!instanceConfig) {
                 throw new Error(`Instance config not found for ${instanceConfigName}`);
             }
+            await updateInstanceSecretSnapshot(hash, instanceConfig);
 
             const {
                 buildTimeout = this.config.buildTimeout,
@@ -378,6 +381,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
         if (!instanceConfig) {
             throw new Error(`Instance config not found for ${instanceConfigName}`);
         }
+        await updateInstanceSecretSnapshot(hash, instanceConfig);
 
         const instanceImage = this.getInstanceImage(project, hash);
 
@@ -490,10 +494,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             k8sBuilderResources: builderResources = this.config.builderResources,
         } = instanceConfig;
 
-        const buildEnvVariables = {
-            ...env,
-            ...generateData.envVariables,
-        };
+        const buildEnvVariables = mergeSecretEnv(env, generateData.envVariables);
         const buildArgs = Object.entries(buildEnvVariables)
             .map(([key, value]) => `--build-arg ${key}='${value.replace(/'/g, "\\'")}'`)
             .join(' ');
@@ -556,10 +557,7 @@ export class K8sFarmProvider extends BaseFarmProvider {
             k8sBuilderResources: builderResources = this.config.builderResources,
         } = instanceConfig;
 
-        const buildEnvVariables = {
-            ...env,
-            ...generateData.envVariables,
-        };
+        const buildEnvVariables = mergeSecretEnv(env, generateData.envVariables);
         const buildArgs = Object.entries(buildEnvVariables)
             .map(([key, value]) => `--opt build-arg:${key}='${value.replace(/'/g, "\\'")}'`)
             .join(' ');
@@ -667,12 +665,12 @@ export class K8sFarmProvider extends BaseFarmProvider {
             hash,
         };
 
-        const runEnvVariables = {
-            ...env,
-            ...generateData.envVariables,
-            ...runEnv,
-            ...generateData.runEnvVariables,
-        };
+        const runEnvVariables = mergeSecretEnv(
+            env,
+            generateData.envVariables,
+            runEnv,
+            generateData.runEnvVariables,
+        );
 
         const instanceHost = new URL(
             generateInstanceHref({

@@ -1,6 +1,7 @@
 import type {Request, Response} from '@gravity-ui/expresskit';
 
 import {coreRegistry} from '../../components/core-plugin-registry';
+import {maskSecrets} from '../../utils/secret-env';
 import type {Vcs} from '../../utils/vcs/vcs';
 
 import {handleUnifiedPullRequest} from './unified-pull-request';
@@ -42,7 +43,7 @@ export default async (req: Request, res: Response) => {
         res.status(200).send();
     } catch (error) {
         if (error instanceof Error) {
-            res.status(500).send({error: error.message});
+            res.status(500).send(maskSecrets({error: error.message}));
         } else {
             res.status(500).send({error: 'Unknown error'});
         }

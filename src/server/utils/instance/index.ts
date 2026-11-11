@@ -4,6 +4,7 @@ import {getFarmProvider} from '../../components/farm-provider';
 import type {InstanceInfo} from '../../models/common';
 import {generateInstanceHash} from '../common';
 import * as db from '../db';
+import {normalizeInstanceEnv} from '../secret-env';
 
 import {RunningLimitsErrorMessage, isGenerateAllowedByLimits} from './limiter';
 
@@ -69,7 +70,7 @@ const startInstance = async (instance: Instance) => {
         throw new Error(RunningLimitsErrorMessage);
     }
 
-    await getFarmProvider().startInstance(instance);
+    await getFarmProvider().startInstance(normalizeInstanceEnv(instance));
 };
 
 /**
@@ -82,7 +83,7 @@ const restartInstance = async (instance: Instance) => {
         throw new Error(RunningLimitsErrorMessage);
     }
 
-    await getFarmProvider().restartInstance(instance);
+    await getFarmProvider().restartInstance(normalizeInstanceEnv(instance));
 };
 
 /**

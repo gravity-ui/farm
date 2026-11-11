@@ -4,6 +4,7 @@ import type {
 } from '../../../shared/api/listInstanceLogs';
 import type {ApiAction} from '../../../shared/common';
 import {wrapInternalError} from '../../utils/common';
+import {getInstance} from '../../utils/db';
 import {getFarmProvider} from '../farm-provider';
 
 const listInstanceLogs: ApiAction<ListInstanceLogsRequest, ListInstanceLogsResponse> = async ({
@@ -21,6 +22,8 @@ const listInstanceLogs: ApiAction<ListInstanceLogsRequest, ListInstanceLogsRespo
     }
 
     try {
+        const storedInstance = await getInstance(hash);
+        if (!storedInstance) return {ok: false, data: {message: 'Instance not found'}};
         const ret: {ok: boolean; data: {message?: string; stdout?: string; stderr?: string}} = {
             ok: true,
             data: {message},

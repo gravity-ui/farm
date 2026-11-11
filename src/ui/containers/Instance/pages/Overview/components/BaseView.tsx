@@ -5,6 +5,12 @@ import {DefinitionList, Flex, Label, Link} from '@gravity-ui/uikit';
 import {isEmpty} from 'lodash';
 
 import type {InstanceWithProviderStatus} from '../../../../../../shared/common';
+import {
+    MASKED_SECRET_VALUE,
+    SECRET_ENV_PREFIX,
+    isSecretEnvKey,
+} from '../../../../../../shared/secret-env';
+import {SecretEnvIcon} from '../../../../../components/SecretEnvIcon/SecretEnvIcon';
 import {YfmPreview} from '../../../../../components/YfmPreview/YfmPreview';
 import {i18nInstance} from '../../../../../i18n-common/i18nInstance';
 import {generateInstanceHref} from '../../../../../utils/common';
@@ -17,15 +23,26 @@ interface BaseViewProps {
 
 interface LabelsViewProps {
     labels: Record<string, string>;
+    secretEnabled?: boolean;
 }
 
-const LabelsView: React.FC<LabelsViewProps> = ({labels}) => {
+const LabelsView: React.FC<LabelsViewProps> = ({labels, secretEnabled = false}) => {
     return (
         <Flex wrap="wrap" gap={2}>
             {Object.entries(labels).map(([key, value]) => (
                 <div key={key} className={styles.label}>
-                    <Label value={value} type="copy" copyText={`${key}=${value}`}>
-                        {key}
+                    <Label
+                        value={secretEnabled && isSecretEnvKey(key) ? MASKED_SECRET_VALUE : value}
+                        type={secretEnabled && isSecretEnvKey(key) ? 'default' : 'copy'}
+                        copyText={
+                            secretEnabled && isSecretEnvKey(key) ? undefined : `${key}=${value}`
+                        }
+                        icon={secretEnabled && isSecretEnvKey(key) ? <SecretEnvIcon /> : undefined}
+                        theme={secretEnabled && isSecretEnvKey(key) ? 'utility' : 'normal'}
+                    >
+                        {secretEnabled && isSecretEnvKey(key)
+                            ? key.slice(SECRET_ENV_PREFIX.length)
+                            : key}
                     </Label>
                 </div>
             ))}
@@ -33,14 +50,17 @@ const LabelsView: React.FC<LabelsViewProps> = ({labels}) => {
     );
 };
 
-const copyObjectText = (object: Record<string, string>) => {
+const copyObjectText = (object: Record<string, string>, omitSecrets = false) => {
     if (isEmpty(object)) {
         return undefined;
     }
 
-    return Object.entries(object)
-        .map(([key, value]) => `${key}=${value}`)
-        .join('&');
+    return (
+        Object.entries(object)
+            .filter(([key]) => !omitSecrets || !isSecretEnvKey(key))
+            .map(([key, value]) => `${key}=${value}`)
+            .join('&') || undefined
+    );
 };
 
 export const BaseView: React.FC<BaseViewProps> = ({instance}) => {
@@ -89,17 +109,17 @@ export const BaseView: React.FC<BaseViewProps> = ({instance}) => {
             {!isEmpty(instance.envVariables) && (
                 <DefinitionList.Item
                     name={i18nInstance('env-variables')}
-                    copyText={copyObjectText(instance.envVariables)}
+                    copyText={copyObjectText(instance.envVariables, true)}
                 >
-                    <LabelsView labels={instance.envVariables} />
+                    <LabelsView labels={instance.envVariables} secretEnabled />
                 </DefinitionList.Item>
             )}
             {!isEmpty(instance.runEnvVariables) && (
                 <DefinitionList.Item
                     name={i18nInstance('run-env-variables')}
-                    copyText={copyObjectText(instance.runEnvVariables)}
+                    copyText={copyObjectText(instance.runEnvVariables, true)}
                 >
-                    <LabelsView labels={instance.runEnvVariables} />
+                    <LabelsView labels={instance.runEnvVariables} secretEnabled />
                 </DefinitionList.Item>
             )}
         </DefinitionList>

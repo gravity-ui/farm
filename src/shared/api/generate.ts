@@ -2,6 +2,7 @@ export type GenerateInstanceRequest = {
     project: string;
     branch: string;
     commit?: string;
+    secretSourceHash?: string;
     vcs: string;
     description?: string;
     urlTemplate?: string;

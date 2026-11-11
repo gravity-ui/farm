@@ -3,6 +3,8 @@ import shell from 'shelljs';
 
 import type {Output} from '../../shared/common';
 
+import {createSecretLogRedactor, maskSecrets} from './secret-env';
+
 const LOGS_TIMEOUT = 5000;
 
 export function executeRun(
@@ -11,7 +13,11 @@ export function executeRun(
     handleOutput?: (output: Output) => void,
     getProcessId?: (pid: number) => void,
 ) {
-    handleOutput?.({command, code: null, stderr: null, stdout: null, duration: null});
+    const redactor = createSecretLogRedactor();
+    const emit = handleOutput
+        ? (output: Output) => handleOutput(redactor.redact([output])[0])
+        : undefined;
+    emit?.({command, code: null, stderr: null, stdout: null, duration: null});
     const start = Date.now();
 
     if (options.env) {
@@ -28,7 +34,7 @@ export function executeRun(
     return new Promise<{code: number; stdout: string; stderr: string}>((resolve, reject) => {
         const timerId = setInterval(() => {
             if (stdoutOutput.length > 0 || stderrOutput.length > 0) {
-                handleOutput?.({
+                emit?.({
                     stdout: stdoutOutput.join(''),
                     stderr: stderrOutput.join(''),
                     code: null,
@@ -45,7 +51,7 @@ export function executeRun(
 
             clearInterval(timerId);
 
-            handleOutput?.({
+            emit?.({
                 command,
                 duration,
                 stdout: stdoutOutput.join(''),
@@ -56,7 +62,7 @@ export function executeRun(
             if (code === 0) {
                 resolve({code, stdout, stderr});
             } else {
-                reject({command, code, stdout, stderr});
+                reject(maskSecrets({command, code, stdout, stderr}));
             }
         });
 

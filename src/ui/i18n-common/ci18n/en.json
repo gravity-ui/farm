@@ -5,5 +5,7 @@
   "cancel": "Cancel",
   "create": "Create",
   "farm-name": "Farm",
-  "error-title": "Error"
+  "error-title": "Error",
+  "secret-variable": "Secret environment variable",
+  "stored-secret-value": "Stored secret, enter a new value to replace"
 }

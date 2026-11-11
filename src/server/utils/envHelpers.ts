@@ -1,3 +1,5 @@
+import {normalizeSecretEnv, registerSecrets} from './secret-env';
+
 function wrapValue(value: string) {
     if (value.startsWith('"') && value.endsWith('"')) {
         return value;
@@ -11,9 +13,10 @@ export function buildEnvVariablesStrPairArr(
         noWrap?: boolean;
     },
 ) {
-    return Object.keys(variables).map((envKey) => {
+    const normalized = normalizeSecretEnv(variables);
+    return Object.keys(normalized).map((envKey) => {
         const needWrap = !opts?.noWrap;
-        const strValue = String(variables[envKey]);
+        const strValue = String(normalized[envKey]);
         const envValue = needWrap ? wrapValue(strValue) : strValue;
         return `${envKey}=${envValue}`;
     });
@@ -29,6 +32,7 @@ export function buildInheritedEnv(envInheritance: Record<string, string>): Recor
             const inheritedValue = process.env[envSource];
             if (typeof inheritedValue === 'string') {
                 acc[envName] = inheritedValue;
+                registerSecrets({[envName]: inheritedValue});
             }
             return acc;
         },
@@ -42,10 +46,10 @@ export function createEnvBuilder() {
     return {
         result,
         addHighPriority(env: typeof result) {
-            Object.assign(result, env);
+            Object.assign(result, normalizeSecretEnv(env));
         },
         addLowPriority(env: typeof result) {
-            Object.assign(result, {...env, ...result});
+            Object.assign(result, {...normalizeSecretEnv(env), ...result});
         },
     };
 }
