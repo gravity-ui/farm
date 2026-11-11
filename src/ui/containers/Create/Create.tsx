@@ -24,6 +24,7 @@ import {prepareGenerateInstanceRequest} from '../../utils/prepareGenerateInstanc
 import {useInstanceActions} from '../Instance/actions';
 
 import {CreateFormContent} from './CreateFormContent/CreateFormContent';
+import {encodeBranchRef, supportsRefSelector} from './CreateFormContent/RefSelector';
 import DeleteOriginalInstanceModal from './DeleteOriginalInstanceModal/DeleteOriginalInstanceModal';
 import {i18n} from './i18n';
 import type {FormValue, QSVariables} from './types';
@@ -136,14 +137,15 @@ export const Create = () => {
         const project = params.get('project') || window.FM.defaultProject || DEFAULT_PROJECT;
         const projectFarmConfig = getProjectFarmConfig(project);
 
+        const defaultBranch = projectFarmConfig.defaultBranch || window.FM.defaultBranch || 'main';
         const values: FormValue = {
             project,
             vcs: projectFarmConfig.vcs || 'git',
             branch:
                 params.get('branch') ||
-                projectFarmConfig.defaultBranch ||
-                window.FM.defaultBranch ||
-                'main',
+                (supportsRefSelector(projectFarmConfig)
+                    ? encodeBranchRef(defaultBranch)
+                    : defaultBranch),
             description: params.get('description') ?? '',
             urlTemplate: params.get('urlTemplate') ?? '',
             instanceConfigName: params.get('instanceConfigName') ?? '',
