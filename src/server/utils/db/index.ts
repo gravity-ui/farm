@@ -73,17 +73,37 @@ const mapInstanceRow = (row: InstanceRow): Instance => ({
     lastActivityAt: row.last_activity_at ? Number(row.last_activity_at) : undefined,
 });
 
-export async function listInstances(): Promise<Instance[]> {
-    const result = await knexInstance('instances').select().orderBy('created', 'asc');
+export type ListInstancesFilter = Partial<
+    Pick<InstanceRow, 'project' | 'branch' | 'vcs' | 'hash' | 'status'>
+>;
 
-    return result.map(mapInstanceRow);
-}
+export async function listInstances({
+    project,
+    branch,
+    vcs,
+    hash,
+    status,
+}: ListInstancesFilter = {}): Promise<Instance[]> {
+    const query = knexInstance('instances').select();
 
-export async function getInstancesByBranch(branch: string): Promise<Instance[]> {
-    const result = await knexInstance('instances')
-        .select()
-        .where({branch})
-        .orderBy('created', 'asc');
+    if (project !== undefined) {
+        query.where('project', project);
+    }
+    if (branch !== undefined) {
+        query.where('branch', branch);
+    }
+    if (vcs !== undefined) {
+        query.where('vcs', vcs);
+    }
+    // eslint-disable-next-line security/detect-possible-timing-attacks
+    if (hash !== undefined) {
+        query.where('hash', hash);
+    }
+    if (status !== undefined) {
+        query.where('status', status);
+    }
+
+    const result = await query.orderBy('created', 'asc');
 
     return result.map(mapInstanceRow);
 }

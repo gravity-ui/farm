@@ -18,7 +18,7 @@ export async function isGenerateAllowedByLimits(
     }
 
     const [instances, providerInstances] = await Promise.all([
-        listInstances(),
+        listInstances({project}),
         getFarmProvider().getInstances(),
     ]);
     const providerInstancesMap = new Map(
@@ -28,21 +28,14 @@ export async function isGenerateAllowedByLimits(
     const projectActiveInstances = instances.filter((instance) => {
         const providerInstance = providerInstancesMap.get(instance.hash);
 
-        const isTargetProject = instance.project === project;
         const isInstanceToGenerate = instanceHashToGenerate === instance.hash;
 
         const isActive =
             activeCommonStatusesSet.has(instance.status) ||
             (providerInstance && activeProviderStatusesSet.has(providerInstance.status));
 
-        const isActiveInTargetProject = isTargetProject && isActive;
-
         // No check for active instance to generate again
-        if (isActiveInTargetProject && isInstanceToGenerate) {
-            return false;
-        }
-
-        return isActiveInTargetProject;
+        return isActive && !isInstanceToGenerate;
     });
 
     return projectActiveInstances.length < runningLimit;

@@ -1,6 +1,5 @@
 import type {AppContext} from '@gravity-ui/nodekit';
 import {AppError} from '@gravity-ui/nodekit';
-import {isEmpty} from 'lodash';
 
 import type {Instance} from '../../../shared/common';
 import deleteInstance from '../../components/api-actions/deleteInstance';
@@ -13,11 +12,31 @@ import {
     wrapInternalError,
 } from '../../utils/common';
 import {getInstanceDescription} from '../../utils/common-db';
-import {getInstance, getInstancesByBranch, listInstances} from '../../utils/db';
+import {getInstance, listInstances} from '../../utils/db';
 import {fetchProjectConfig} from '../../utils/farmJsonConfig';
 import type {CommonPullRequestData} from '../../utils/vcs/vcs';
 
 import {getCurrentInstanceAndGenerate} from './common';
+
+function filterInstancesByLabels(
+    instances: Instance[],
+    labels: Record<string, string> | undefined,
+    uniqByLabels: string[] | undefined,
+): Instance[] | undefined {
+    if (!uniqByLabels || uniqByLabels.length === 0) {
+        return undefined;
+    }
+
+    const actualLabels = labels ?? {};
+
+    if (uniqByLabels.some((label) => actualLabels[label] === undefined)) {
+        return [];
+    }
+
+    return instances.filter((instance) =>
+        uniqByLabels.every((label) => instance.labels?.[label] === actualLabels[label]),
+    );
+}
 
 export async function handleUnifiedPullRequest(
     commonData: CommonPullRequestData,
@@ -51,7 +70,7 @@ export async function handleUnifiedPullRequest(
             }
 
             const instanceHashMap = new Map<string, string>();
-            const instances = await listInstances();
+            const projectInstances = await listInstances({project: commonData.project});
 
             const instanceDescriptions = await runAll(configFile.preview, (instanceConfig) =>
                 getInstanceDescription({
@@ -72,42 +91,38 @@ export async function handleUnifiedPullRequest(
                 ? filterEmptyObjectEntries(commonData.runEnvVariables)
                 : undefined;
 
-            await runAllSync(configFile.preview, async (config) => {
-                let sameInstances: Instance[] | undefined;
+            for (const config of configFile.preview) {
+                instanceHashMap.set(
+                    config.name,
+                    generateInstanceHash({
+                        project: commonData.project,
+                        vcs,
+                        branch: commonData.branch,
+                        instanceConfigName: config.name,
+                        additionalEnvVariables: finalEnvVariables,
+                        additionalRunEnvVariables: finalRunEnvVariables,
+                    }),
+                );
+            }
 
-                if (
-                    finalLabels &&
-                    !isEmpty(finalLabels) &&
-                    uniqByLabels &&
-                    uniqByLabels.length > 0
-                ) {
-                    sameInstances = instances.filter((instance) => {
-                        return uniqByLabels.every(
-                            (label) => instance.labels?.[label] === finalLabels[label],
-                        );
-                    });
-                }
+            // Instances with a hash from this event are regenerated in place, not deleted
+            const newHashes = new Set(instanceHashMap.values());
+            const sameInstances = (
+                filterInstancesByLabels(projectInstances, finalLabels, uniqByLabels) ?? []
+            ).filter((instance) => !newHashes.has(instance.hash));
 
-                if (sameInstances && sameInstances.length > 0) {
-                    ctx.log('Found same instances. Deleting them.', {
-                        sameInstances: sameInstances.map((instance) => instance.hash),
-                    });
-
-                    await runAll(sameInstances, async (instance) => {
-                        await deleteInstance({data: {hash: instance.hash}, ctx});
-                    });
-                }
-
-                const hash = generateInstanceHash({
-                    project: commonData.project,
-                    vcs,
-                    branch: commonData.branch,
-                    instanceConfigName: config.name,
-                    additionalEnvVariables: finalEnvVariables,
-                    additionalRunEnvVariables: finalRunEnvVariables,
+            if (sameInstances.length > 0) {
+                ctx.log('Found same instances. Deleting them.', {
+                    sameInstances: sameInstances.map((instance) => instance.hash),
                 });
 
-                instanceHashMap.set(config.name, hash);
+                await runAll(sameInstances, async (instance) => {
+                    await deleteInstance({data: {hash: instance.hash}, ctx});
+                });
+            }
+
+            await runAllSync(configFile.preview, async (config) => {
+                const hash = instanceHashMap.get(config.name);
 
                 await getCurrentInstanceAndGenerate({
                     hash,
@@ -165,7 +180,22 @@ export async function handleUnifiedPullRequest(
                 }
             }
         } else if (commonData.action === 'closed') {
-            const instances = await getInstancesByBranch(commonData.branch);
+            const branchInstances = await listInstances({
+                project: commonData.project,
+                branch: commonData.branch,
+            });
+            const finalLabels = labels ? filterEmptyObjectEntries(labels) : undefined;
+            const instances =
+                filterInstancesByLabels(branchInstances, finalLabels, uniqByLabels) ??
+                branchInstances;
+
+            ctx.log('Deleting instances of closed pull request.', {
+                project: commonData.project,
+                branch: commonData.branch,
+                labels: finalLabels,
+                uniqByLabels,
+                instances: instances.map((instance) => instance.hash),
+            });
 
             const webhookActions = coreRegistry.webhookActions.getPlugins();
             for (const [name, action] of Object.entries(webhookActions)) {
