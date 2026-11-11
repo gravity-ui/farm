@@ -1,5 +1,4 @@
 {
-  "logs-from": "Логи из «{{name}}»",
   "filter": "Фильтр",
   "filter-placeholder": "Текст или JS /RegExp/gi",
   "number-of-lines": "Количество строк"

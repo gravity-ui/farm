@@ -31,6 +31,12 @@ Creates a new instance.
 revision for checkout but does not affect the instance hash or URL. Git requires a full 40- or
 64-character hexadecimal commit hash. Without `commit`, Farm checks out `branch` as before.
 
+#### Git references
+
+For `vcs: 'git'`, `branch` accepts a plain branch name (`main`, `feature/x`), an explicit branch (`refs/heads/<name>`), or a tag (`refs/tags/<name>`). A plain name selects a branch, not a tag. To select a branch whose literal name starts with `refs/heads/` or `refs/tags/`, prepend `refs/heads/` to that name.
+
+These prefixes apply only to Git. Other VCS plugins define their own reference formats. Farm stores the supplied `branch` value unchanged and includes it in the instance hash, so `main` and `refs/heads/main` create different instances. An explicit `commit` selects the checkout revision without changing this hash rule.
+
 **Response**
 
 ```typescript
@@ -253,8 +259,12 @@ Gets a list of branches for the specified project.
 ```typescript
 {
     project: string;
+    refType?: 'branch' | 'tag';
+    query?: string;
 }
 ```
+
+For GitHub projects, `refType` defaults to `branch`; use `tag` to list tags. Without `query`, the result contains up to 30 references. `query` performs an exact name lookup beyond the recent list and accepts at most 1024 characters. Returned names have no `refs/heads/` or `refs/tags/` prefix; use the [Git reference rules](#git-references) when passing them as `branch`. Invalid request parameters return HTTP 400.
 
 **Response**
 
@@ -494,6 +504,8 @@ Gets the instance configuration.
 }
 ```
 
+The `branch` field follows the [Git reference rules](#git-references) for `vcs: 'git'`.
+
 **Response**
 
 ```typescript
@@ -520,6 +532,8 @@ Gets a list of instance configuration names.
     commit?: string;
 }
 ```
+
+The `branch` field follows the [Git reference rules](#git-references) for `vcs: 'git'`.
 
 **Response**
 
@@ -597,6 +611,8 @@ hash: string
     lastActivityAt?: number;
 }
 ```
+
+`branch` stores the original reference, including any prefix. See [Git references](#git-references).
 
 ### InstanceCommonStatus
 
