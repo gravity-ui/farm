@@ -8,6 +8,7 @@ import {useParams} from 'react-router-dom';
 import type {ListLogsResponse} from '../../../../../shared/api/listLogs';
 import type {Instance, Output} from '../../../../../shared/common';
 import {EmptyPage} from '../../../../components/EmptyPage/EmptyPage';
+import {LogText} from '../../../../components/LogText/LogText';
 import {DataLoader} from '../../../../components/data-source';
 import {Page} from '../../../../components/layouts/Page/Page';
 import {getInstanceSource, listLogsSource} from '../../../../data-sources';
@@ -66,7 +67,7 @@ const LogsContent = ({instance, listLogs}: LogsContentProps) => {
                         variant="code-1"
                         className={styles.output}
                     >
-                        {stdout}
+                        <LogText text={stdout || ''} />
                     </Text>
                 )}
                 {Boolean(stderr) && (
@@ -76,7 +77,7 @@ const LogsContent = ({instance, listLogs}: LogsContentProps) => {
                         variant="code-1"
                         className={styles.output}
                     >
-                        {stderr}
+                        <LogText text={stderr || ''} />
                     </Text>
                 )}
                 {Boolean(duration) && (
