@@ -1,0 +1,18 @@
+packages: []
+
+# SWC inserts imports from core-js into application sources.
+publicHoistPattern:
+  - core-js
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@swc/core'
+  - cpu-features
+  - sqlite3
+  - ssh2
+  - unrs-resolver
+
+ignoredBuiltDependencies:
+  - core-js
+  - core-js-pure
+  - protobufjs

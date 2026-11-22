@@ -1,19 +1,28 @@
 ARG BASE_IMAGE=ghcr.io/gravity-ui/node-nginx:ubuntu22-nodejs20-full.2025-01-24
 
-FROM $BASE_IMAGE AS build-stage
+FROM $BASE_IMAGE AS base
 WORKDIR /opt/app
+
+# Use the same pinned pnpm in the build and runtime images.
+COPY package.json ./
+RUN corepack enable && corepack install
+
+FROM base AS build-stage
+ENV CI=true
 
 COPY dist/public dist/public
-COPY package.json package-lock.json tsconfig.json app-builder.config.ts ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json app-builder.config.ts ./
+COPY .husky/install.mjs .husky/install.mjs
 COPY src ./src
-RUN <<EOT
-    npm ci
-    npm run build
-    npm prune --production
+RUN --mount=type=cache,id=farm-pnpm,target=/pnpm/store <<EOT
+    set -e
+    pnpm run deps:ci --store-dir=/pnpm/store
+    pnpm run build
+    rm -rf node_modules
+    pnpm install --prod --offline --frozen-lockfile --store-dir=/pnpm/store --package-import-method=copy
 EOT
 
-FROM $BASE_IMAGE
-WORKDIR /opt/app
+FROM base
 
 COPY --from=build-stage /opt/app/ /opt/app/
 COPY ./scripts /opt/app/scripts
