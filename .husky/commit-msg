@@ -1,1 +1,1 @@
-npx commitlint -e
+pnpm exec commitlint -e

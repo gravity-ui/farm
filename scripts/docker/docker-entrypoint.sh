@@ -99,4 +99,4 @@ echo "Nginx started"
 
 ## Run Farm
 echo "Starting farm..."
-npm start
+pnpm start
